@@ -1,11 +1,18 @@
 # ============================================================================
-# VISUALIZADOR EMTP - Aplicación Shiny
+# EXPLORADOR DE DATOS EMTP — Aplicación Shiny
 # ============================================================================
-# Para actualizar datos: editar scripts/config.R y correr
-#   Rscript scripts/preparar_datos.R
+# Aplicación interactiva para explorar datos públicos de la Educación Media
+# Técnico-Profesional de Chile: matrícula, docentes, egresados, titulados,
+# resultados SIMCE e IDPS, y un chatbot con acceso a los datos.
+#
+# Flujo de trabajo:
+#   1. Ajustar rutas y parámetros en scripts/config.R
+#   2. Correr scripts/preparar_datos.R para generar los .rds en data/app/
+#   3. Publicar con rsconnect::deployApp()
 # ============================================================================
 
-# Locale UTF-8 para evitar warnings de traducción de tildes al leer los .rds
+# Forzar locale UTF-8 para evitar problemas con tildes y caracteres especiales
+# en los nombres de establecimientos y comunas al leer los archivos .rds
 suppressWarnings(try(Sys.setlocale("LC_ALL", "en_US.UTF-8"), silent = TRUE))
 
 library(shiny)
@@ -26,18 +33,22 @@ library(openxlsx)
 
 source("R/chatbot_rag.R")
 
-# scripts/config.R busca los CSV en 'datos brutos/' (es config del PIPELINE) y haría
-# stop() en el servidor, donde esos archivos no se despliegan. La app solo necesita
-# las constantes de año, que se definen ANTES de las búsquedas de archivos. Por eso
-# lo cargamos de forma TOLERANTE en un entorno aislado: las constantes quedan
-# disponibles aunque la búsqueda de rutas falle por falta de 'datos brutos/'.
+# config.R fue diseñado para el pipeline local (busca archivos en 'datos brutos/'),
+# pero en el servidor de shinyapps.io esa carpeta no existe y haría fallar la app.
+# Para evitar eso, lo cargamos en un entorno aislado y de forma tolerante a errores:
+# solo nos interesan las constantes de año (definidas al inicio del script),
+# no las rutas de archivos que vienen después.
 .cfg_env <- new.env()
 try(sys.source("scripts/config.R", envir = .cfg_env), silent = TRUE)
 ANIO_TITULADOS <- if (!is.null(.cfg_env$ANIO_TITULADOS)) .cfg_env$ANIO_TITULADOS else 2024L
 
 # =============================================================================
-# CARGA DE DATOS (pre-procesados por scripts/preparar_datos_deployment.R)
-# Para actualizar: editar scripts/config.R → correr el script → deployApp()
+# CARGA DE DATOS
+# Los archivos .rds en data/app/ son generados por scripts/preparar_datos.R.
+# Para actualizar la app con datos nuevos:
+#   1. Editar rutas/parámetros en scripts/config.R si cambiaron las fuentes
+#   2. Correr scripts/preparar_datos.R (genera los .rds desde los brutos)
+#   3. Volver a publicar con rsconnect::deployApp()
 # =============================================================================
 
 suppressWarnings({
@@ -66,7 +77,8 @@ cat("✓ Datos cargados — matrícula:", format(nrow(matricula_raw), big.mark =
     "| docentes:", format(nrow(docentes_raw), big.mark = "."),
     "| egresados:", format(nrow(egresados_2024), big.mark = "."), "\n")
 
-# Función auxiliar para convertir códigos a nombres de dependencia
+# Convierte el código numérico de dependencia (1-4) al nombre legible
+# (Municipal, Particular subvencionado, etc.) para mostrar en tablas y fichas
 obtener_nombre_dependencia <- function(cod) {
   if (is.na(cod) || cod == "") return("Desconocida")
   cod_char <- as.character(cod)
@@ -75,12 +87,16 @@ obtener_nombre_dependencia <- function(cod) {
   return(nom[1])
 }
 
-# ---- Tema Global Plotly ----
-# Tema global Plotly
-# Tipografía y paleta de gráficos (estándar editorial: OWID / Datawrapper)
+# =============================================================================
+# TEMA VISUAL DE GRÁFICOS (Plotly)
+# Define el estilo global de todos los gráficos interactivos: tipografía,
+# colores, grilla y barra de herramientas. El estilo sigue estándares
+# editoriales de visualización de datos (tipo Our World in Data / Datawrapper)
+# para que los gráficos se vean limpios y profesionales sin configuración extra.
+# =============================================================================
 PLOTLY_FONT <- list(family = "Inter, Roboto, 'Segoe UI', system-ui, sans-serif",
                     size = 13, color = "#3A4754")
-# Paleta categórica institucional armónica (hasta 8 series)
+# Paleta de colores institucional para hasta 8 categorías (ej. regiones, dependencias)
 PALETA_CAT <- c("#34536A", "#B35A5A", "#3C7F6D", "#C2A869",
                 "#6E5F80", "#5A6E79", "#7FA8B5", "#9C7A6B")
 
@@ -107,7 +123,8 @@ plotly_theme <- list(
   colorway = PALETA_CAT
 )
 
-# Aplica el tema editorial y limpia la barra de herramientas (look estático tipo Datawrapper)
+# Aplica el tema editorial a cualquier gráfico Plotly y oculta la barra de herramientas
+# para lograr un aspecto más limpio (sin botones de zoom/descarga que distraen)
 apply_plotly_theme <- function(p) {
   p <- layout(p,
               font = plotly_theme$font,
@@ -125,11 +142,17 @@ apply_plotly_theme <- function(p) {
   return(p)
 }
 
-# --- UI Shiny
+# =============================================================================
+# INTERFAZ DE USUARIO (UI)
+# Define la estructura visual de la app: pantalla de carga, barra de navegación
+# y el contenido de cada pestaña. El contenido reactivo (gráficos, tablas)
+# se genera en la sección Server más abajo.
+# =============================================================================
 ui <- fluidPage(
   useShinyjs(),  # Necesario para show/hide
   
-  # Pantalla de carga (se muestra mientras cargan los datos)
+  # Pantalla de carga animada — visible mientras Shiny inicializa los datos.
+  # Se oculta automáticamente en el server una vez que todo está listo.
   div(id = "loading-screen",
       style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
                background: linear-gradient(135deg, #34536A, #2A4255); 
@@ -160,7 +183,7 @@ ui <- fluidPage(
       )
   ),
   
-  # Contenido principal (oculto inicialmente)
+  # Contenido principal — empieza oculto y se revela cuando termina la carga
   shinyjs::hidden(
     div(id = "main-content",
         navbarPage(
@@ -1815,10 +1838,19 @@ ui <- fluidPage(
 ) # Fin fluidPage (UI principal)
 
 
-# --- Server Shiny
+# =============================================================================
+# LÓGICA DEL SERVIDOR (Server)
+# Aquí vive toda la reactividad de la app: qué pasa cuando el usuario cambia
+# un filtro, selecciona una fila, o hace clic en un botón. Cada bloque
+# corresponde a un módulo funcional de la app (pantalla de carga, filtros,
+# gráficos, descargas, ficha de establecimiento, chatbot).
+# =============================================================================
 server <- function(input, output, session) {
   
-  # 🎬 PANTALLA DE CARGA - Ocultar cuando los datos estén listos
+  # ── Pantalla de carga ──────────────────────────────────────────────────────
+  # Una vez que el server arranca y los datos globales existen, espera un
+  # instante para que el navegador termine de renderizar el HTML, luego
+  # oculta la pantalla de carga y muestra el contenido de la app.
   observe({
     # Esperar a que los datos estén cargados (verificar que existan las variables globales)
     req(exists("matricula_raw"), exists("base_apoyo"))
@@ -1834,12 +1866,11 @@ server <- function(input, output, session) {
 
   })
 
-  # ============================================================
-  # NUEVO — FILTROS GEOGRÁFICOS EN CASCADA (Región → DEPROV → Comuna)
-  # No modifica datos: solo ACOTA las opciones de los desplegables según la
-  # región/DEPROV elegida (antes Comuna mostraba las ~346 comunas del país).
-  # Conserva la selección si sigue siendo válida; si no, vuelve a "Todas".
-  # ============================================================
+  # ── Filtros geográficos en cascada (Región → Deprov → Comuna) ─────────────
+  # Cuando el usuario selecciona una región, el desplegable de provincias
+  # se acota a las de esa región, y el de comunas a las de esa provincia.
+  # Sin esto, el selector de comunas mostraría las ~346 comunas del país.
+  # Si la selección previa sigue siendo válida tras el cambio, se mantiene.
   .cascada_geo <- function(df, reg_in, dep_in, com_in,
                            reg_col = "nom_reg_rbd_a",
                            dep_col = "nom_deprov_rbd",
@@ -1876,16 +1907,19 @@ server <- function(input, output, session) {
     if (exists("matricula_raw")) .cascada_geo(matricula_raw, "filtro_region_viz","filtro_provincia",   "filtro_comuna")
   }, error = function(e) cat("[cascada] aviso:", conditionMessage(e), "\n"))
 
-  # ============================================================
-  # NUEVO — Navegación por tarjetas del Inicio (saltan a la pestaña)
-  # ============================================================
+  # ── Navegación desde las tarjetas del Inicio ──────────────────────────────
+  # Las tarjetas de la página de inicio actúan como accesos directos:
+  # al hacer clic en una, la app salta automáticamente a esa pestaña.
   observeEvent(input$go_mapa,      updateNavbarPage(session, "navbar", "tab_mapa"))
   observeEvent(input$go_buscador,  updateNavbarPage(session, "navbar", "tab_buscador"))
   observeEvent(input$go_viz,       updateNavbarPage(session, "navbar", "tab_viz"))
   observeEvent(input$go_docentes,  updateNavbarPage(session, "navbar", "tab_docentes"))
   observeEvent(input$go_egresados, updateNavbarPage(session, "navbar", "egresados_tab"))
 
-  # --- Nueva lógica reactiva pestaña Docentes ---
+  # ── Pestaña Docentes ───────────────────────────────────────────────────────
+  # Filtros reactivos y cálculos para el análisis de la dotación docente EMTP.
+  # Distingue entre docentes EMTP totales (todos los que dictan en enseñanza
+  # diferenciada) y docentes de módulos de especialidad (SUBSECTOR > 40000).
   observeEvent(input$doc_reset, {
     updateSelectInput(session, "doc_f_region", selected = "Todas")
     updateSelectInput(session, "doc_f_comuna", selected = "Todas")
@@ -2860,8 +2894,10 @@ server <- function(input, output, session) {
     }
   })
   
-  # ========== FILTROS REACTIVOS PARA MAPA DE MATRÍCULA ==========
-  # Los filtros se actualizan dinámicamente según las selecciones actuales
+  # ── Filtros reactivos para el Mapa de Matrícula ───────────────────────────
+  # Lógica de cascada para los filtros del mapa: cada selector acota las
+  # opciones de los que vienen después (RFT → Región → Provincia → Comuna →
+  # Dependencia → Especialidad → Sostenedor).
   
   # Helper function para obtener datos filtrados según selección actual
   get_datos_mapa_filtrados <- reactive({
@@ -3008,7 +3044,9 @@ server <- function(input, output, session) {
   
   # ========== FIN FILTROS REACTIVOS MAPA ==========
   
-  # ========== FILTROS REACTIVOS PARA BUSCADOR DE ESTABLECIMIENTOS ==========
+  # ── Filtros reactivos para el Buscador de Establecimientos ────────────────
+  # Misma lógica de cascada que el mapa, aplicada a los filtros del buscador
+  # de liceos. Los resultados alimentan tanto la tabla como la ficha del EE.
   
   # Helper function para obtener datos filtrados según selección actual
   get_datos_busqueda_filtrados <- reactive({
@@ -3155,7 +3193,9 @@ server <- function(input, output, session) {
   
   # ========== FIN FILTROS REACTIVOS BUSCADOR ==========
   
-  # ========== FILTROS REACTIVOS PARA VISUALIZACIONES ==========
+  # ── Filtros reactivos para Visualizaciones de Matrícula ───────────────────
+  # Mismo patrón de cascada, ahora para los gráficos de matrícula por
+  # especialidad, género, región, dependencia y sector económico.
   
   # Helper function para obtener datos filtrados según selección actual
   get_datos_viz_filtrados <- reactive({
@@ -3304,8 +3344,10 @@ server <- function(input, output, session) {
   
   
   
-  # --- Optimización: Crear índices para joins más rápidos ---
-  # Después de cargar los datos, antes del UI
+  # ── Índices y caché para consultas frecuentes ──────────────────────────────
+  # Se crean al inicio de la sesión para acelerar los joins y filtros que
+  # ocurren cada vez que el usuario cambia un selector. Sin esto, cada
+  # interacción recorrería el dataset completo desde cero.
   matricula_raw <- matricula_raw %>%
     arrange(rbd, cod_com_rbd) # Ordenar para mejorar joins
   
@@ -3511,10 +3553,11 @@ server <- function(input, output, session) {
     apply_plotly_theme(p)
   })
   
-  # ========================= KPIs Inicio (reubicados dentro del server) =========================
-  # KPIs de Inicio: SIEMPRE fijos (totales EMTP del sistema). No dependen de los
-  # filtros de Análisis Territorial ni de ninguna otra pestaña → usan el dataset
-  # completo (matricula_raw), no datos_filtrados().
+  # ── KPIs de la página de Inicio ───────────────────────────────────────────
+  # Los indicadores del inicio muestran SIEMPRE los totales nacionales del
+  # sistema EMTP, independiente de los filtros que el usuario tenga activos
+  # en otras pestañas. Por eso usan matricula_raw directamente, no
+  # datos_filtrados(), que sí responde a los selectores de región/dependencia.
   output$kpi_total_matricula_inicio <- renderText({
     format(nrow(matricula_raw), big.mark = ".")
   })
@@ -4111,7 +4154,9 @@ server <- function(input, output, session) {
     }
   )
   
-  # ======== DOWNLOAD HANDLERS PARA REPORTES HISTÓRICOS 2018-2025 ========
+  # ── Descarga de reportes históricos 2018-2025 ─────────────────────────────
+  # Permite descargar los PDFs de análisis de matrícula por región y zona
+  # geográfica. Los archivos viven en docs/ y se sirven directamente.
   
   # Mapeo de nombres de región a códigos
   region_codes <- c(
@@ -4169,7 +4214,9 @@ server <- function(input, output, session) {
   )
   
 
-  # Download handler para minuta territorial en PDF
+  # ── Descarga de minuta territorial en PDF ─────────────────────────────────
+  # Renderiza el template templates/resumen_territorio.Rmd con los datos del
+  # territorio seleccionado y lo entrega como PDF listo para imprimir.
   output$descargar_resumen_territorial_pdf <- downloadHandler(
     filename = function() {
       nombre <- input$comuna
@@ -4262,7 +4309,9 @@ server <- function(input, output, session) {
     }
   )
   
-  # Download handler para resumen territorial en Excel
+  # ── Descarga de resumen territorial en Excel ───────────────────────────────
+  # Genera un Excel con múltiples hojas: resumen general, matrícula por nivel,
+  # por especialidad, establecimientos, etnias, nacionalidad y asistencia.
   output$descargar_resumen_territorial_excel <- downloadHandler(
     filename = function() {
       nombre <- input$comuna
@@ -4491,7 +4540,10 @@ server <- function(input, output, session) {
   )
   
 
-  # Download handler para minutas por RBD en PDF (ZIP)
+  # ── Descarga de minutas por establecimiento en PDF (archivo ZIP) ──────────
+  # Para cada RBD seleccionado en el buscador, renderiza una minuta PDF
+  # individual usando templates/minuta_establecimiento.Rmd, y los comprime
+  # todos en un ZIP para que el usuario pueda descargarlos de una vez.
   output$descargar_minuta_pdf <- downloadHandler(
     filename = function() {
       paste0("minutas_establecimientos_pdf_", Sys.Date(), ".zip")
@@ -4722,7 +4774,9 @@ server <- function(input, output, session) {
     }
   )
   
-  # Download handler para minutas Excel por RBD
+  # ── Descarga de minutas por establecimiento en Excel (archivo ZIP) ────────
+  # Misma lógica que el ZIP de PDFs, pero genera hojas Excel por establecimiento
+  # con datos de matrícula, SIMCE, IDPS y docentes de cada liceo.
   output$descargar_minuta_excel <- downloadHandler(
     filename = function() {
       paste0("minutas_establecimientos_", Sys.Date(), ".zip")
@@ -5277,9 +5331,9 @@ server <- function(input, output, session) {
     mapa
   })
   
-  # ---------------------------------------------------------------------------
-  # Tabla seleccionable de establecimientos (Buscador)
-  # ---------------------------------------------------------------------------
+  # ── Tabla de resultados del Buscador ──────────────────────────────────────
+  # Muestra los establecimientos que cumplen los filtros activos. Al hacer
+  # clic en una fila, la ficha del establecimiento se actualiza automáticamente.
   output$tabla_establecimientos <- DT::renderDataTable({
     req(input$buscar)
     resultado_busqueda()
@@ -5391,15 +5445,13 @@ server <- function(input, output, session) {
       arrange(nom_rbd)
   })
   
-  # ===========================================================================
-  # OUTPUTS PARA BUSCADOR AVANZADO
-  # ===========================================================================
+  # ── Outputs del Buscador de Establecimientos ──────────────────────────────
   
   # (Eliminado output$tabla_establecimientos_dt redundante)
   
-  # ===========================================================================
-  # OUTPUTS PARA ANÁLISIS VISUAL
-  # ===========================================================================
+  # ── Outputs de la pestaña Visualizaciones ─────────────────────────────────
+  # Gráficos interactivos que responden a los filtros territoriales y de
+  # categorización (región, dependencia, especialidad, sector económico).
   
   # Métricas del análisis visual
   output$total_matricula <- renderText({
@@ -5587,9 +5639,11 @@ server <- function(input, output, session) {
     return(p)
   })
   
-  # ============================================================================
-  # MÓDULO: EGRESADOS Y TITULADOS EMTP
-  # ============================================================================
+  # ── Módulo: Egresados y Titulados EMTP ────────────────────────────────────
+  # Contiene tres sub-pestañas:
+  #   1. Egresados EMTP 2024 — quiénes egresaron, de dónde y en qué rama
+  #   2. Continuidad en Ed. Superior — cruce con matrícula ES 2025 (50,3%)
+  #   3. Titulados TP — quiénes obtuvieron su título técnico-profesional
   
   # Datos reactivos filtrados de egresados
   egresados_filtrados <- reactive({
@@ -5843,9 +5897,10 @@ server <- function(input, output, session) {
       )
   })
 
-  # ============================================================================
-  # OUTPUTS PARA SUB-PESTAÑA: CONTINUIDAD DE ESTUDIOS
-  # ============================================================================
+  # ── Sub-pestaña: Continuidad en Educación Superior ────────────────────────
+  # Cruza los egresados EMTP 2024 (73.931) con la matrícula de educación
+  # superior 2025 para identificar quiénes continuaron estudiando (50,3%).
+  # Analiza continuidad por dependencia, ruralidad, género y área de estudio.
   
   # Datos reactivos filtrados de continuidad
   continuidad_filtrada <- reactive({
@@ -6128,9 +6183,9 @@ server <- function(input, output, session) {
       )
   })
 
-  # ================================================================
-  # TAB TITULADOS TP
-  # ================================================================
+  # ── Sub-pestaña: Titulados Técnico-Profesionales ──────────────────────────
+  # Analiza los titulados TP 2024: distribución por especialidad, región,
+  # dependencia, género y sector económico de la práctica profesional.
   tit_dep_label <- function(cod) dplyr::case_when(
     as.character(cod)=="1"~"Municipal", as.character(cod)=="2"~"Particular Subvencionado",
     as.character(cod)=="4"~"Corporación de Administración Delegada",
@@ -6208,11 +6263,14 @@ server <- function(input, output, session) {
              margin = list(l = 10), legend = list(orientation = "h")))
   })
 
-  # ================================================================
-  # TAB ESTABLECIMIENTOS — Ficha experta (contexto + SIMCE + IDPS)
-  # ================================================================
+  # ── Pestaña Establecimientos — Ficha por liceo ────────────────────────────
+  # El buscador filtra la tabla de liceos EMTP y al seleccionar uno, se
+  # despliega su ficha completa: mapa de ubicación, especialidades con
+  # matrícula por género, resultados SIMCE (puntaje, diferencias, estándares
+  # de aprendizaje) e IDPS por dimensión y subdimensión.
+  # También permite descargar minutas PDF y Excel por establecimiento.
 
-  # Diccionarios y helpers
+  # Diccionarios de etiquetas y funciones auxiliares para la ficha
   ee_ind_lab <- c("1" = "Autoestima Académica y Motivación Escolar",
                   "2" = "Clima de Convivencia Escolar",
                   "3" = "Participación y Formación Ciudadana",
@@ -6507,9 +6565,11 @@ server <- function(input, output, session) {
     tagList(div(style = "font-size:13px;", filas))
   })
 
-  # ================================================================
-  # CHATBOT RAG FLOTANTE — delega en R/chatbot_rag.R
-  # ================================================================
+  # ── Chatbot flotante (Asistente EMTP) ─────────────────────────────────────
+  # Burbuja de chat disponible en todas las pestañas. Usa un esquema RAG
+  # sencillo sobre los datos procesados de la app, con llamadas a la API de
+  # Groq (modelo Llama). La lógica de consulta y respuesta está en R/chatbot_rag.R.
+  # Requiere GROQ_API_KEY en .Renviron; sin ella el chatbot queda deshabilitado.
   chatbot_server(
     input, output, session,
     matricula   = matricula_raw,
