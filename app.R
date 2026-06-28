@@ -705,9 +705,11 @@ ui <- fluidPage(
                   tags$br(),
                   tags$em("Los datos utilizados son de acceso público y propiedad del Ministerio de Educación de Chile. Esta aplicación no tiene afiliación oficial con MINEDUC ni con la Agencia de Calidad de la Educación. Uso de datos con fines de análisis educativo y divulgación."),
                   tags$br(),
-                  tags$span(style = "color: #888; font-size: 11px;",
+                  tags$a(href = "https://github.com/andreslazcano-bit/datospublicosEMTP",
+                    target = "_blank",
+                    style = "color: #888; font-size: 11px; text-decoration: none;",
                     tags$i(class = "fab fa-github", style = "margin-right: 5px;"),
-                    "Repositorio en proceso de publicación en GitHub")
+                    "github.com/andreslazcano-bit/datospublicosEMTP")
                 )
               )
             )
