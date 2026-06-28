@@ -1,0 +1,28 @@
+# Credenciales y variables de entorno — NUNCA subir
+.Renviron
+*.Renviron
+secrets/
+
+# macOS
+.DS_Store
+**/.DS_Store
+.AppleDouble
+.LSOverride
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# Archivos temporales / backup
+*.bak
+*~
+.#*
+
+# rsconnect (metadatos de despliegue — opcional incluir, excluimos por limpieza)
+# rsconnect/
+
+# Cache y builds locales
+__pycache__/
+*.pyc

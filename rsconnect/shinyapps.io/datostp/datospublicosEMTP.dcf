@@ -1,0 +1,13 @@
+name: datospublicosEMTP
+title: datospublicosEMTP
+username: datostp
+account: datostp
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17074429
+bundleId: 12175963
+url: https://datostp.shinyapps.io/datospublicosEMTP/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: app_v2_thin.R.bak

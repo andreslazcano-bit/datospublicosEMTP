@@ -1,0 +1,821 @@
+---
+title: "Informe Ejecutivo: Análisis de Docentes EMTP"
+subtitle: "Enseñanza Media Técnico-Profesional"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: pdflatex
+    keep_tex: false
+geometry: margin=2.5cm
+params:
+  datos: NULL
+  resumen_kpis: NULL
+  resumen_especialidad: NULL
+  filtros_aplicados: NULL
+  plot_genero: NULL
+  plot_genero_esp: NULL
+  plot_genero_region: NULL
+  plot_dependencia: NULL
+  plot_ruralidad: NULL
+  plot_edad: NULL
+  plot_servicio: NULL
+  plot_tramo: NULL
+  muestra_datos: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 7,
+  fig.height = 4.5,
+  fig.align = 'center'
+)
+
+library(knitr)
+library(ggplot2)
+library(dplyr)
+```
+
+\newpage
+
+# RESUMEN EJECUTIVO
+
+Este informe presenta un análisis exhaustivo de los docentes de Enseñanza Media Técnico-Profesional (EMTP) del sistema educacional chileno. El análisis se basa en datos oficiales del Ministerio de Educación y contempla múltiples dimensiones: demográficas, profesionales, institucionales y de especialización técnica.
+
+## Criterios de Análisis
+
+Los datos corresponden a docentes de especialidad EMTP que cumplen con los siguientes criterios técnicos:
+
+- **ID_ICH:** 410–863 (Jóvenes: terminación 10, Adultos: terminación 63)
+- **SUBSECTOR:** 40000–81004 (Especialidades técnico-profesionales)
+
+## Filtros Aplicados
+
+```{r filtros, results='asis'}
+if (!is.null(params$filtros_aplicados) && length(params$filtros_aplicados) > 0) {
+  cat("\n")
+  for (nombre in names(params$filtros_aplicados)) {
+    valor <- params$filtros_aplicados[[nombre]]
+    if (!is.null(valor) && valor != "Todas" && valor != "Todos") {
+      cat(paste0("- **", nombre, ":** ", valor, "\n"))
+    }
+  }
+} else {
+  cat("- Sin filtros aplicados (análisis completo del universo de datos)\n")
+}
+```
+
+## Principales Hallazgos
+
+```{r kpis, results='asis'}
+kpis <- params$resumen_kpis
+if (!is.null(kpis)) {
+  cat("\n")
+  cat(sprintf("- **Total de registros analizados:** %s\n", format(kpis$registros, big.mark = ".")))
+  cat(sprintf("- **Docentes únicos:** %s profesionales\n", format(kpis$personas, big.mark = ".")))
+  cat(sprintf("- **Establecimientos promedio por docente:** %.1f RBD\n", as.numeric(kpis$promedio_rbd)))
+  cat(sprintf("- **Edad mediana:** %.0f años\n", as.numeric(kpis$mediana_edad)))
+  cat(sprintf("- **Años promedio en el sistema:** %.1f años\n", as.numeric(kpis$prom_servicio)))
+  cat(sprintf("- **Porcentaje de mujeres:** %.1f%%\n", as.numeric(kpis$pct_mujeres)))
+  cat(sprintf("- **Porcentaje de hombres:** %.1f%%\n", 100 - as.numeric(kpis$pct_mujeres)))
+}
+```
+
+\newpage
+
+# ANÁLISIS DEMOGRÁFICO
+
+## Distribución por Género
+
+```{r plot_genero, fig.cap="Distribución de docentes EMTP por género (personas únicas)", fig.height=4.5, fig.width=7}
+if (!is.null(params$datos)) {
+  datos <- params$datos
+  
+  # Verificar si existe la columna
+  if ("DOC_GENERO_label" %in% names(datos)) {
+    # Generar gráfico de género con torta
+    datos_genero <- datos %>%
+      dplyr::distinct(MRUN, .keep_all = TRUE) %>%
+      dplyr::filter(!is.na(DOC_GENERO_label)) %>%
+      dplyr::count(DOC_GENERO_label) %>%
+      dplyr::mutate(
+        pct = n / sum(n) * 100,
+        label = paste0(DOC_GENERO_label, "\n", format(n, big.mark = "."), "\n(", round(pct, 1), "%)")
+      )
+    
+    if (nrow(datos_genero) > 0) {
+      ggplot(datos_genero, aes(x = "", y = n, fill = DOC_GENERO_label)) +
+        geom_col(width = 1, color = "white", size = 2) +
+        geom_text(aes(label = label), position = position_stack(vjust = 0.5), 
+                  color = "white", fontface = "bold", size = 4.5) +
+        coord_polar(theta = "y") +
+        scale_fill_manual(values = c("Hombre" = "#3498DB", "Mujer" = "#E74C3C")) +
+        labs(fill = "Género", title = "Distribución por Género") +
+        theme_void() +
+        theme(legend.position = "right",
+              plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+    }
+  } else if ("DOC_GENERO" %in% names(datos)) {
+    # Si no existe DOC_GENERO_label, crear desde DOC_GENERO
+    datos_genero <- datos %>%
+      dplyr::distinct(MRUN, .keep_all = TRUE) %>%
+      dplyr::filter(!is.na(DOC_GENERO)) %>%
+      dplyr::mutate(Genero = dplyr::case_when(
+        DOC_GENERO == 1 ~ "Hombre",
+        DOC_GENERO == 2 ~ "Mujer",
+        TRUE ~ "Sin información"
+      )) %>%
+      dplyr::count(Genero) %>%
+      dplyr::mutate(
+        pct = n / sum(n) * 100,
+        label = paste0(Genero, "\n", format(n, big.mark = "."), "\n(", round(pct, 1), "%)")
+      )
+    
+    if (nrow(datos_genero) > 0) {
+      ggplot(datos_genero, aes(x = "", y = n, fill = Genero)) +
+        geom_col(width = 1, color = "white", size = 2) +
+        geom_text(aes(label = label), position = position_stack(vjust = 0.5), 
+                  color = "white", fontface = "bold", size = 4.5) +
+        coord_polar(theta = "y") +
+        scale_fill_manual(values = c("Hombre" = "#3498DB", "Mujer" = "#E74C3C", "Sin información" = "#95A5A6")) +
+        labs(fill = "Género", title = "Distribución por Género") +
+        theme_void() +
+        theme(legend.position = "right",
+              plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+    }
+  }
+}
+```
+
+```{r stats_genero, results='asis'}
+if (!is.null(params$datos)) {
+  datos <- params$datos
+  if ("DOC_GENERO_label" %in% names(datos) && "MRUN" %in% names(datos)) {
+    dist_genero <- datos %>%
+      dplyr::distinct(MRUN, .keep_all = TRUE) %>%
+      dplyr::count(DOC_GENERO_label) %>%
+      dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+      dplyr::arrange(desc(n))
+    
+    cat("\n### Distribución Detallada\n\n")
+    for(i in 1:nrow(dist_genero)) {
+      cat(sprintf("- **%s:** %s docentes (%.1f%%)\n", 
+                  dist_genero$DOC_GENERO_label[i],
+                  format(dist_genero$n[i], big.mark = "."),
+                  dist_genero$Porcentaje[i]))
+    }
+  }
+}
+```
+
+## Análisis Etario
+
+```{r plot_edad, fig.cap="Distribución de edad de docentes EMTP", fig.height=4}
+if (!is.null(params$plot_edad)) {
+  print(params$plot_edad)
+} else if (!is.null(params$datos) && "EDAD" %in% names(params$datos)) {
+  datos_edad <- params$datos %>%
+    dplyr::mutate(EDAD = as.numeric(EDAD)) %>%
+    dplyr::filter(!is.na(EDAD), EDAD > 0, EDAD < 100) %>%
+    dplyr::distinct(MRUN, .keep_all = TRUE)
+  
+  if (nrow(datos_edad) > 0) {
+    mediana_edad <- median(datos_edad$EDAD, na.rm = TRUE)
+    
+    ggplot(datos_edad, aes(x = EDAD)) +
+      geom_histogram(binwidth = 5, fill = "#3498DB", color = "white") +
+      geom_vline(xintercept = mediana_edad, color = "#E74C3C", linetype = "dashed", size = 1) +
+      annotate("text", x = mediana_edad + 3, y = Inf, 
+               label = paste0("Mediana: ", round(mediana_edad), " años"),
+               vjust = 2, color = "#E74C3C") +
+      labs(x = "Edad (años)", y = "Número de Docentes", 
+           title = "Distribución Etaria de Docentes EMTP") +
+      theme_minimal()
+  }
+}
+```
+
+```{r stats_edad, results='asis'}
+if (!is.null(params$datos) && "EDAD" %in% names(params$datos)) {
+  datos_edad <- params$datos %>%
+    dplyr::mutate(EDAD = as.numeric(EDAD)) %>%
+    dplyr::filter(!is.na(EDAD), EDAD > 0, EDAD < 100) %>%
+    dplyr::distinct(MRUN, .keep_all = TRUE)
+  
+  if (nrow(datos_edad) > 0) {
+    cat("\n### Estadísticas de Edad\n\n")
+    cat(sprintf("- **Edad mínima:** %.0f años\n", min(datos_edad$EDAD, na.rm = TRUE)))
+    cat(sprintf("- **Edad máxima:** %.0f años\n", max(datos_edad$EDAD, na.rm = TRUE)))
+    cat(sprintf("- **Edad promedio:** %.1f años\n", mean(datos_edad$EDAD, na.rm = TRUE)))
+    cat(sprintf("- **Edad mediana:** %.0f años\n", median(datos_edad$EDAD, na.rm = TRUE)))
+    
+    # Rangos etarios
+    datos_rangos <- datos_edad %>%
+      dplyr::mutate(Rango = dplyr::case_when(
+        EDAD < 30 ~ "Menos de 30",
+        EDAD < 40 ~ "30-39",
+        EDAD < 50 ~ "40-49",
+        EDAD < 60 ~ "50-59",
+        TRUE ~ "60 o más"
+      )) %>%
+      dplyr::count(Rango) %>%
+      dplyr::mutate(
+        Porcentaje = round(n / sum(n) * 100, 1),
+        # Crear orden lógico
+        Orden = dplyr::case_when(
+          Rango == "Menos de 30" ~ 1,
+          Rango == "30-39" ~ 2,
+          Rango == "40-49" ~ 3,
+          Rango == "50-59" ~ 4,
+          Rango == "60 o más" ~ 5,
+          TRUE ~ 6
+        )
+      ) %>%
+      dplyr::arrange(Orden)
+    
+    cat("\n### Distribución por Rangos Etarios\n\n")
+    for(i in 1:nrow(datos_rangos)) {
+      cat(sprintf("- **%s años:** %s docentes (%.1f%%)\n", 
+                  datos_rangos$Rango[i],
+                  format(datos_rangos$n[i], big.mark = "."),
+                  datos_rangos$Porcentaje[i]))
+    }
+  }
+}
+```
+
+\newpage
+
+# ANÁLISIS PROFESIONAL
+
+## Carrera Docente y Antigüedad
+
+```{r plot_tramo, fig.cap="Distribución por tramo de carrera docente", fig.height=3.5, fig.width=7}
+if (!is.null(params$plot_tramo)) {
+  print(params$plot_tramo)
+} else if (!is.null(params$datos) && "TRAMO_CARR_DOCENTE" %in% names(params$datos)) {
+  datos_tramo <- params$datos %>%
+    dplyr::filter(!is.na(TRAMO_CARR_DOCENTE)) %>%
+    dplyr::distinct(MRUN, TRAMO_CARR_DOCENTE) %>%
+    dplyr::mutate(
+      Tramo_Label = dplyr::case_when(
+        TRAMO_CARR_DOCENTE == 0 ~ "0: Sin Información",
+        TRAMO_CARR_DOCENTE == 1 ~ "1: Acceso",
+        TRAMO_CARR_DOCENTE == 2 ~ "2: Inicial",
+        TRAMO_CARR_DOCENTE == 3 ~ "3: Temprano",
+        TRAMO_CARR_DOCENTE == 4 ~ "4: Avanzado",
+        TRAMO_CARR_DOCENTE == 5 ~ "5: Experto I",
+        TRAMO_CARR_DOCENTE == 6 ~ "6: Experto II",
+        TRUE ~ as.character(TRAMO_CARR_DOCENTE)
+      )
+    ) %>%
+    dplyr::count(Tramo_Label) %>%
+    dplyr::mutate(pct = n / sum(n) * 100,
+                  label = paste0(n, "\n(", round(pct, 1), "%)")) %>%
+    dplyr::arrange(Tramo_Label)
+  
+  if (nrow(datos_tramo) > 0) {
+    ggplot(datos_tramo, aes(x = Tramo_Label, y = n)) +
+      geom_col(fill = "#2980B9") +
+      geom_text(aes(label = label), vjust = -0.5, size = 2.8, fontface = "bold") +
+      labs(x = "Tramo Carrera Docente", y = "Número de Docentes",
+           title = "Distribución por Tramo de Carrera Docente") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+            plot.title = element_text(size = 11)) +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.15)))
+  }
+}
+```
+
+```{r stats_carrera, results='asis'}
+if (!is.null(params$datos)) {
+  datos <- params$datos
+  
+  # Años de servicio
+  if ("ANOS_SERV" %in% names(datos)) {
+    datos_serv <- datos %>%
+      dplyr::mutate(ANOS_SERV = as.numeric(ANOS_SERV)) %>%
+      dplyr::filter(!is.na(ANOS_SERV), ANOS_SERV >= 0) %>%
+      dplyr::distinct(MRUN, .keep_all = TRUE)
+    
+    if (nrow(datos_serv) > 0) {
+      cat("\n### Años de Servicio en el Sistema\n\n")
+      cat(sprintf("- **Promedio de años:** %.1f años\n", mean(datos_serv$ANOS_SERV, na.rm = TRUE)))
+      cat(sprintf("- **Mediana:** %.0f años\n", median(datos_serv$ANOS_SERV, na.rm = TRUE)))
+      cat(sprintf("- **Mínimo:** %.0f años\n", min(datos_serv$ANOS_SERV, na.rm = TRUE)))
+      cat(sprintf("- **Máximo:** %.0f años\n", max(datos_serv$ANOS_SERV, na.rm = TRUE)))
+    }
+  }
+  
+  # Tipo de contrato
+  if ("ID_ITC_CORR" %in% names(datos)) {
+    # Mapeo de códigos a nombres de contratos
+    contrato_map <- c(
+      "101" = "Titular", "102" = "Contratado", "103" = "Reemplazante", 
+      "104" = "Contrato a Honorarios", "105" = "Titular SEP", "106" = "Contratado SEP",
+      "107" = "Contrato a Honorarios SEP", "108" = "Reemplazante SEP", 
+      "109" = "Titular PIE", "110" = "Contratado PIE", "111" = "Contrato a Honorarios PIE",
+      "112" = "Reemplazante PIE", "301" = "Contrato Indefinido", "302" = "Contrato a Plazo Fijo",
+      "303" = "Contrato a Honorarios", "304" = "Reemplazante", "305" = "Contrato a Honorarios PIE",
+      "306" = "Contrato Indefinido SEP", "307" = "Contrato a Plazo Fijo SEP",
+      "308" = "Contrato a Honorarios SEP", "309" = "Reemplazante SEP", 
+      "310" = "Reemplazante PIE", "311" = "Contrato a Plazo Fijo PIE",
+      "312" = "Contrato Indefinido PIE", "401" = "Contrato Indefinido",
+      "402" = "Contrato a Plazo Fijo", "403" = "Contrato a Honorarios", "404" = "Reemplazante"
+    )
+    
+    datos_contrato <- datos %>%
+      dplyr::filter(!is.na(ID_ITC_CORR)) %>%
+      dplyr::mutate(
+        Tipo_Contrato = dplyr::case_when(
+          as.character(ID_ITC_CORR) %in% names(contrato_map) ~ contrato_map[as.character(ID_ITC_CORR)],
+          TRUE ~ as.character(ID_ITC_CORR)
+        )
+      ) %>%
+      dplyr::count(Tipo_Contrato) %>%
+      dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+      dplyr::arrange(desc(n))
+    
+    if (nrow(datos_contrato) > 0) {
+      cat("\n### Tipo de Contrato\n\n")
+      for(i in 1:min(10, nrow(datos_contrato))) {
+        cat(sprintf("- **%s:** %s registros (%.1f%%)\n", 
+                    datos_contrato$Tipo_Contrato[i],
+                    format(datos_contrato$n[i], big.mark = "."),
+                    datos_contrato$Porcentaje[i]))
+      }
+    }
+  }
+  
+  # Horas de contrato
+  if ("HORAS_CONTRATO" %in% names(datos)) {
+    datos_horas <- datos %>%
+      dplyr::mutate(HORAS_CONTRATO = as.numeric(HORAS_CONTRATO)) %>%
+      dplyr::filter(!is.na(HORAS_CONTRATO), HORAS_CONTRATO > 0)
+    
+    if (nrow(datos_horas) > 0) {
+      cat("\n### Horas de Contrato\n\n")
+      cat(sprintf("- **Promedio de horas:** %.1f hrs/semanales\n", mean(datos_horas$HORAS_CONTRATO, na.rm = TRUE)))
+      cat(sprintf("- **Mediana:** %.0f hrs/semanales\n", median(datos_horas$HORAS_CONTRATO, na.rm = TRUE)))
+      
+      # Distribución por rangos
+      datos_rangos_horas <- datos_horas %>%
+        dplyr::mutate(Rango = dplyr::case_when(
+          HORAS_CONTRATO < 20 ~ "Menos de 20 hrs",
+          HORAS_CONTRATO < 30 ~ "20-29 hrs",
+          HORAS_CONTRATO < 44 ~ "30-43 hrs",
+          TRUE ~ "44 hrs o más"
+        )) %>%
+        dplyr::count(Rango) %>%
+        dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1))
+      
+      cat("\n")
+      for(i in 1:nrow(datos_rangos_horas)) {
+        cat(sprintf("  - **%s:** %s docentes (%.1f%%)\n", 
+                    datos_rangos_horas$Rango[i],
+                    format(datos_rangos_horas$n[i], big.mark = "."),
+                    datos_rangos_horas$Porcentaje[i]))
+      }
+    }
+  }
+}
+```
+
+\newpage
+
+# ANÁLISIS POR ESPECIALIDAD
+
+## Distribución de Docentes por Especialidad
+
+```{r tabla_especialidad}
+if (!is.null(params$resumen_especialidad)) {
+  esp <- params$resumen_especialidad %>% head(20)
+  
+  kable(
+    esp,
+    format = "simple",
+    col.names = c("Especialidad", "Registros", "Docentes", "Porcentaje Mujeres"),
+    align = c("l", "r", "r", "r"),
+    caption = "Top 20 Especialidades con mayor cantidad de docentes"
+  )
+}
+```
+
+## Género por Especialidad
+
+```{r plot_genero_especialidad, fig.cap="Porcentaje de mujeres por especialidad (Top 15)", fig.height=6}
+if (!is.null(params$plot_genero_esp)) {
+  print(params$plot_genero_esp)
+}
+```
+
+```{r stats_especialidad, results='asis'}
+if (!is.null(params$resumen_especialidad) && nrow(params$resumen_especialidad) > 0) {
+  esp <- params$resumen_especialidad
+  
+  if (nrow(esp) >= 5) {
+    cat("\n### Especialidades con Mayor Participación Femenina\n\n")
+    esp_fem <- esp %>% dplyr::arrange(desc(Porcentaje_Mujeres)) %>% head(5)
+    for(i in 1:nrow(esp_fem)) {
+      cat(sprintf("%d. **%s:** %.1f%% mujeres (%s docentes)\n", 
+                  i, esp_fem$Especialidad[i], esp_fem$Porcentaje_Mujeres[i],
+                  format(esp_fem$Docentes[i], big.mark = ".")))
+    }
+    
+    cat("\n### Especialidades con Mayor Participación Masculina\n\n")
+    esp_masc <- esp %>% dplyr::arrange(Porcentaje_Mujeres) %>% head(5)
+    for(i in 1:nrow(esp_masc)) {
+      cat(sprintf("%d. **%s:** %.1f%% mujeres (%s docentes)\n", 
+                  i, esp_masc$Especialidad[i], esp_masc$Porcentaje_Mujeres[i],
+                  format(esp_masc$Docentes[i], big.mark = ".")))
+    }
+  }
+}
+```
+
+\newpage
+
+# ANÁLISIS INSTITUCIONAL
+
+## Distribución por Dependencia Administrativa
+
+```{r plot_dependencia, fig.cap="Docentes por dependencia administrativa", fig.height=4}
+if (!is.null(params$plot_dependencia)) {
+  print(params$plot_dependencia)
+} else if (!is.null(params$datos) && "COD_DEPE2" %in% names(params$datos)) {
+  dependencia_labels <- c(
+    "1" = "Municipal",
+    "2" = "Particular Subvencionado",
+    "4" = "Corporación de Administración Delegada (DL 3166)",
+    "5" = "Servicio Local de Educación Pública"
+  )
+  datos_dep <- params$datos %>%
+    dplyr::filter(!is.na(COD_DEPE2)) %>%
+    dplyr::distinct(MRUN, COD_DEPE2) %>%
+    dplyr::count(COD_DEPE2) %>%
+    dplyr::mutate(
+      Dependencia = dplyr::recode(as.character(COD_DEPE2), !!!dependencia_labels)
+    ) %>%
+    dplyr::arrange(desc(n))
+  if (nrow(datos_dep) > 0) {
+    ggplot(datos_dep, aes(x = reorder(Dependencia, n), y = n)) +
+      geom_col(fill = "#E67E22") +
+      coord_flip() +
+      labs(x = NULL, y = "Número de Docentes",
+           title = "Docentes por Dependencia Administrativa") +
+      theme_minimal()
+  }
+}
+```
+
+```{r stats_dependencia, results='asis'}
+if (!is.null(params$datos) && "COD_DEPE2" %in% names(params$datos)) {
+  dependencia_labels <- c(
+    "1" = "Municipal",
+    "2" = "Particular Subvencionado",
+    "4" = "Corporación de Administración Delegada (DL 3166)",
+    "5" = "Servicio Local de Educación Pública"
+  )
+  datos_dep <- params$datos %>%
+    dplyr::filter(!is.na(COD_DEPE2)) %>%
+    dplyr::distinct(MRUN, COD_DEPE2) %>%
+    dplyr::count(COD_DEPE2) %>%
+    dplyr::mutate(
+      Dependencia = dplyr::recode(as.character(COD_DEPE2), !!!dependencia_labels),
+      Porcentaje = round(n / sum(n) * 100, 1)
+    ) %>%
+    dplyr::arrange(desc(n))
+  if (nrow(datos_dep) > 0) {
+    cat("\n### Distribución Detallada\n\n")
+    for(i in 1:nrow(datos_dep)) {
+      cat(sprintf("- **%s:** %s docentes (%.1f%%)\n",
+                  datos_dep$Dependencia[i],
+                  format(datos_dep$n[i], big.mark = "."),
+                  datos_dep$Porcentaje[i]))
+    }
+  }
+}
+```
+
+## Distribución Urbano-Rural
+
+```{r plot_ruralidad, fig.cap="Docentes según ubicación del establecimiento", fig.height=4}
+if (!is.null(params$plot_ruralidad)) {
+  print(params$plot_ruralidad)
+} else if (!is.null(params$datos) && "RURAL_RBD" %in% names(params$datos)) {
+  datos_rural <- params$datos %>%
+    dplyr::filter(!is.na(RURAL_RBD)) %>%
+    dplyr::distinct(MRUN, RURAL_RBD) %>%
+    dplyr::count(RURAL_RBD) %>%
+    dplyr::mutate(RURAL_RBD = dplyr::case_when(
+      RURAL_RBD == 0 ~ "Urbano",
+      RURAL_RBD == 1 ~ "Rural",
+      TRUE ~ as.character(RURAL_RBD)
+    ))
+  
+  if (nrow(datos_rural) > 0) {
+    ggplot(datos_rural, aes(x = "", y = n, fill = RURAL_RBD)) +
+      geom_col(width = 1) +
+      coord_polar(theta = "y") +
+      scale_fill_manual(values = c("Urbano" = "#27AE60", "Rural" = "#C0392B")) +
+      labs(fill = "Ubicación", title = "Distribución Urbano-Rural") +
+      theme_void() +
+      theme(legend.position = "right")
+  }
+}
+```
+
+```{r stats_ruralidad, results='asis'}
+if (!is.null(params$datos) && "RURAL_RBD" %in% names(params$datos)) {
+  datos_rural <- params$datos %>%
+    dplyr::filter(!is.na(RURAL_RBD)) %>%
+    dplyr::distinct(MRUN, RURAL_RBD) %>%
+    dplyr::mutate(RURAL_RBD = dplyr::case_when(
+      RURAL_RBD == 0 ~ "Urbano",
+      RURAL_RBD == 1 ~ "Rural",
+      TRUE ~ as.character(RURAL_RBD)
+    )) %>%
+    dplyr::count(RURAL_RBD) %>%
+    dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1))
+  
+  if (nrow(datos_rural) > 0) {
+    cat("\n### Distribución Detallada\n\n")
+    for(i in 1:nrow(datos_rural)) {
+      cat(sprintf("- **%s:** %s docentes (%.1f%%)\n", 
+                  datos_rural$RURAL_RBD[i],
+                  format(datos_rural$n[i], big.mark = "."),
+                  datos_rural$Porcentaje[i]))
+    }
+  }
+}
+```
+
+## Distribución Regional
+
+```{r stats_regional, results='asis'}
+if (!is.null(params$datos) && "NOM_REG_RBD_A" %in% names(params$datos)) {
+  datos_region <- params$datos %>%
+    dplyr::filter(!is.na(NOM_REG_RBD_A)) %>%
+    dplyr::distinct(MRUN, NOM_REG_RBD_A) %>%
+    dplyr::count(NOM_REG_RBD_A) %>%
+    dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+    dplyr::arrange(desc(n))
+  
+  if (nrow(datos_region) > 0) {
+    cat("\n### Distribución de Docentes EMTP por Región\n\n")
+    for(i in 1:nrow(datos_region)) {
+      cat(sprintf("%d. **%s:** %s docentes (%.1f%%)\n", 
+                  i, datos_region$NOM_REG_RBD_A[i],
+                  format(datos_region$n[i], big.mark = "."),
+                  datos_region$Porcentaje[i]))
+    }
+  }
+}
+```
+
+\newpage
+
+# ANÁLISIS DE FORMACIÓN
+
+## Títulos y Formación Inicial
+
+```{r stats_titulos, results='asis'}
+if (!is.null(params$datos)) {
+  datos <- params$datos
+  
+  # ============================================
+  # NUEVO: Área de Titulación (TIT_ID)
+  # ============================================
+  if ("TIT_ID_1" %in% names(datos)) {
+    cat("\n### Área de Titulación\n\n")
+    cat("**Codificación:** 0=Sin Información, 1=Educación, 2=Otras Áreas, 3=No titulado\n\n")
+    
+    # Clasificación considerando ambos títulos
+    datos_tit <- datos %>%
+      dplyr::distinct(MRUN, TIT_ID_1, TIT_ID_2) %>%
+      dplyr::mutate(
+        Categoria = dplyr::case_when(
+          TIT_ID_1 == 1 | TIT_ID_2 == 1 ~ "Titulado en Educación",
+          (TIT_ID_1 == 2 | TIT_ID_2 == 2) ~ "Titulado en Otras Áreas",
+          TIT_ID_1 == 3 ~ "No titulado",
+          TIT_ID_1 == 0 | is.na(TIT_ID_1) ~ "Sin información",
+          TRUE ~ "Otra situación"
+        )
+      ) %>%
+      dplyr::count(Categoria) %>%
+      dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+      dplyr::arrange(desc(n))
+    
+    if (nrow(datos_tit) > 0) {
+      for(i in 1:nrow(datos_tit)) {
+        cat(sprintf("- **%s:** %s docentes (%.1f%%)\n", 
+                    datos_tit$Categoria[i],
+                    format(datos_tit$n[i], big.mark = "."),
+                    datos_tit$Porcentaje[i]))
+      }
+    }
+    
+    # Docentes con dos títulos
+    con_dos_titulos <- datos %>%
+      dplyr::filter(!is.na(TIT_ID_2), TIT_ID_2 != 0) %>%
+      dplyr::distinct(MRUN) %>%
+      nrow()
+    
+    if (con_dos_titulos > 0) {
+      total_docentes <- datos %>% dplyr::distinct(MRUN) %>% nrow()
+      pct_dos <- round(con_dos_titulos / total_docentes * 100, 1)
+      cat(sprintf("\n**Docentes con 2 títulos:** %s (%.1f%% del total)\n", 
+                  format(con_dos_titulos, big.mark = "."), pct_dos))
+    }
+  }
+  
+  # ============================================
+  # Tipo de título (solo para Educación)
+  # ============================================
+  if ("TIP_TIT_ID_1" %in% names(datos)) {
+    # Mapeo de códigos a nombres de títulos
+    titulo_map <- c(
+      "11" = "De Párvulos", "12" = "Diferencial", "13" = "Básica", 
+      "14" = "Media", "15" = "Parvularia y Básica", "16" = "Básica y Media",
+      "20" = "No Aplica", "21" = "Técnico de nivel superior",
+      "22" = "Profesional sin licenciatura", "23" = "Profesional con licenciatura",
+      "24" = "Titulado Media Técnico-Profesional", "25" = "Titulado Media Artística",
+      "26" = "Titulado Escuela Vocacional", "30" = "No aplica",
+      "31" = "Egresado Media H-C", "32" = "Egresado Media T-P", "33" = "Otra"
+    )
+    
+    # Considerar ambos títulos si están en Educación
+    df_tip1 <- datos %>%
+      dplyr::filter(TIT_ID_1 == 1, !is.na(TIP_TIT_ID_1)) %>%
+      dplyr::distinct(MRUN, TIP_TIT_ID_1) %>%
+      dplyr::select(MRUN, TIP_TIT = TIP_TIT_ID_1)
+    
+    df_tip2 <- datos %>%
+      dplyr::filter(TIT_ID_2 == 1, !is.na(TIP_TIT_ID_2)) %>%
+      dplyr::distinct(MRUN, TIP_TIT_ID_2) %>%
+      dplyr::select(MRUN, TIP_TIT = TIP_TIT_ID_2)
+    
+    datos_titulo <- dplyr::bind_rows(df_tip1, df_tip2) %>%
+      dplyr::mutate(
+        Tipo_Titulo = dplyr::case_when(
+          as.character(TIP_TIT) %in% names(titulo_map) ~ titulo_map[as.character(TIP_TIT)],
+          TRUE ~ as.character(TIP_TIT)
+        )
+      ) %>%
+      dplyr::count(Tipo_Titulo) %>%
+      dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+      dplyr::arrange(desc(n)) %>%
+      head(10)
+    
+    if (nrow(datos_titulo) > 0) {
+      cat("\n### Tipo de Título en Educación (Top 10)\n\n")
+      cat("*Nota: Un docente con 2 títulos en educación aparece dos veces en este conteo*\n\n")
+      for(i in 1:nrow(datos_titulo)) {
+        cat(sprintf("- **%s:** %s títulos (%.1f%%)\n", 
+                    datos_titulo$Tipo_Titulo[i],
+                    format(datos_titulo$n[i], big.mark = "."),
+                    datos_titulo$Porcentaje[i]))
+      }
+    }
+  }
+  
+  # ============================================
+  # NUEVO: Tipo de institución (considerando ambos títulos)
+  # ============================================
+  if ("TIP_INSTI_ID_1" %in% names(datos)) {
+    # Mapeo de códigos a nombres de instituciones
+    institucion_map <- c(
+      "0" = "No posee título",
+      "1" = "Universidad",
+      "2" = "Centro de Formación Técnica (CFT)",
+      "3" = "Instituto Profesional (IP)",
+      "4" = "Escuela Normal",
+      "5" = "Otro tipo de institución"
+    )
+    
+    # Procesar institución 1
+    df_insti1 <- datos %>%
+      dplyr::filter(!is.na(TIP_INSTI_ID_1)) %>%
+      dplyr::distinct(MRUN, TIP_INSTI_ID_1) %>%
+      dplyr::select(MRUN, TIP_INSTI = TIP_INSTI_ID_1)
+    
+    # Procesar institución 2
+    df_insti2 <- datos %>%
+      dplyr::filter(!is.na(TIP_INSTI_ID_2), TIP_INSTI_ID_2 != 0) %>%
+      dplyr::distinct(MRUN, TIP_INSTI_ID_2) %>%
+      dplyr::select(MRUN, TIP_INSTI = TIP_INSTI_ID_2)
+    
+    datos_inst <- dplyr::bind_rows(df_insti1, df_insti2) %>%
+      dplyr::mutate(
+        Tipo_Institucion = dplyr::case_when(
+          as.character(TIP_INSTI) %in% names(institucion_map) ~ institucion_map[as.character(TIP_INSTI)],
+          TRUE ~ as.character(TIP_INSTI)
+        )
+      ) %>%
+      dplyr::count(Tipo_Institucion) %>%
+      dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+      dplyr::arrange(desc(n))
+    
+    if (nrow(datos_inst) > 0) {
+      cat("\n### Tipo de Institución Formadora\n\n")
+      cat("*Nota: Un docente con títulos de 2 instituciones aparece dos veces*\n\n")
+      for(i in 1:nrow(datos_inst)) {
+        cat(sprintf("- **%s:** %s títulos (%.1f%%)\n", 
+                    datos_inst$Tipo_Institucion[i],
+                    format(datos_inst$n[i], big.mark = "."),
+                    datos_inst$Porcentaje[i]))
+      }
+      
+      # Análisis específico para títulos en Educación
+      if ("TIT_ID_1" %in% names(datos)) {
+        datos_inst_educ <- datos %>%
+          dplyr::filter(TIT_ID_1 == 1 | TIT_ID_2 == 1) %>%
+          dplyr::distinct(MRUN, TIP_INSTI_ID_1) %>%
+          dplyr::filter(!is.na(TIP_INSTI_ID_1)) %>%
+          dplyr::mutate(
+            Tipo_Institucion = dplyr::case_when(
+              TIP_INSTI_ID_1 == 1 ~ "Universidad",
+              TIP_INSTI_ID_1 == 4 ~ "Escuela Normal",
+              TIP_INSTI_ID_1 %in% c(2, 3) ~ "CFT/IP",
+              TIP_INSTI_ID_1 == 5 ~ "Otro",
+              TRUE ~ "Sin info/No posee"
+            )
+          ) %>%
+          dplyr::count(Tipo_Institucion) %>%
+          dplyr::mutate(Porcentaje = round(n / sum(n) * 100, 1)) %>%
+          dplyr::arrange(desc(n))
+        
+        if (nrow(datos_inst_educ) > 0) {
+          cat("\n**Instituciones donde estudiaron docentes con título en Educación:**\n\n")
+          for(i in 1:nrow(datos_inst_educ)) {
+            cat(sprintf("- %s: %.1f%%\n", 
+                        datos_inst_educ$Tipo_Institucion[i],
+                        datos_inst_educ$Porcentaje[i]))
+          }
+        }
+      }
+    }
+  }
+  
+  # Duración de carrera
+  if ("DURACION_CARRERA_1" %in% names(datos)) {
+    datos_dur <- datos %>%
+      dplyr::filter(!is.na(DURACION_CARRERA_1), DURACION_CARRERA_1 > 0) %>%
+      dplyr::distinct(MRUN, DURACION_CARRERA_1) %>%
+      dplyr::mutate(DURACION_CARRERA_1 = as.numeric(DURACION_CARRERA_1))
+    
+    if (nrow(datos_dur) > 0) {
+      cat("\n### Duración de la Carrera\n\n")
+      cat(sprintf("- **Promedio:** %.1f años\n", mean(datos_dur$DURACION_CARRERA_1, na.rm = TRUE)))
+      cat(sprintf("- **Mediana:** %.0f años\n", median(datos_dur$DURACION_CARRERA_1, na.rm = TRUE)))
+    }
+  }
+}
+```
+
+\newpage
+
+# ANEXOS
+
+## Notas Metodológicas
+
+### Fuente de Datos
+
+- **Origen:** Base de datos oficial del Ministerio de Educación de Chile
+- **Año de referencia:** Datos más recientes disponibles
+- **Cobertura:** Establecimientos educacionales con enseñanza media técnico-profesional
+
+### Definiciones Clave
+
+- **Registros:** Número total de filas en la base de datos (un docente puede tener múltiples registros si trabaja en varios establecimientos o especialidades)
+- **Personas únicas:** Número de docentes distintos identificados por MRUN
+- **Especialidad EMTP:** Programas de formación técnico-profesional de nivel medio
+- **ID_ICH:** Identificador de nivel de enseñanza
+- **SUBSECTOR:** Código de especialidad técnica
+
+### Criterios de Inclusión
+
+Los datos incluidos en este reporte cumplen con:
+
+- **ID_ICH:** 410–863
+  - Terminación 10: Educación de Jóvenes
+  - Terminación 63: Educación de Adultos
+- **SUBSECTOR:** 40000–81004 (especialidades técnico-profesionales válidas)
+
+### Limitaciones del Análisis
+
+- Los datos reflejan un corte temporal específico
+- La información depende de la calidad del registro administrativo
+- Algunos campos pueden presentar valores nulos o inconsistentes
+
+---
+
+**Informe generado el:** `r format(Sys.time(), '%d de %B de %Y a las %H:%M:%S')`
+
+**Generado por:** Sistema de Análisis de Datos EMTP - Visualizador de Educación Técnico-Profesional

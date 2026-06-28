@@ -1,0 +1,7 @@
+# No subir a shinyapps.io
+*.CSV
+*.csv
+*.xlsx
+.secrets/
+data/geographic/
+scripts/

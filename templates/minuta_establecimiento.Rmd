@@ -1,0 +1,921 @@
+---
+title: ""
+output: 
+  pdf_document:
+    latex_engine: xelatex
+  word_document: default
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \renewcommand{\tablename}{Cuadro}
+  - \renewcommand{\figurename}{Figura}
+params:
+  datos_generales: NA
+  datos_generales1: NA
+  resumen_matricula: NA
+  detalle_especialidades: NA
+  resumen_etnias: NA
+  extranjeros: NA
+  origen_extranjeros: NA
+  datos_establecimiento: NA
+  detalle_por_nivel: NA
+  datos_docentes: NA
+  resumen_subsector: NA
+  asistencia: NA
+  asis_prom: NA
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(flextable)
+library(ggplot2)
+library(tidyr)
+library(officer)
+library(stringr)
+library(knitr)
+library(kableExtra)
+
+# Helper para centrar tablas y escalar en PDF si son anchas
+tabla_centrada <- function(df, caption = NULL, font_size = NULL) {
+  if (knitr::is_latex_output()) {
+    k <- knitr::kable(df, format = "latex", booktabs = TRUE, longtable = FALSE, caption = caption, align = 'c')
+    k <- kableExtra::kable_styling(k, full_width = FALSE, position = "center",
+                                   latex_options = c("HOLD_position", "scale_down"))
+    if (!is.null(font_size)) {
+      k <- kableExtra::kable_styling(k, font_size = font_size)
+    }
+    return(k)
+  } else {
+    ft <- flextable::flextable(df)
+    if (!is.null(caption)) ft <- flextable::set_caption(ft, caption)
+    ft <- flextable::align(ft, align = "center", part = "all") %>%
+      flextable::autofit()
+    return(ft)
+  }
+}
+```
+
+```{r titulo, results='asis', echo=FALSE}
+cat("# MINUTA DE DATOS GENERALES DEL ESTABLECIMIENTO - DATOS 2024/2025\n\n")
+```
+
+> El documento presenta un resumen de los principales datos de matrícula y características del estudiantado con foco en la Educación Media Técnico-Profesional (EMTP). La información ha sido elaborada a partir de los registros administrativos del Ministerio de Educación disponibles a la fecha de su generación. Se incluyen datos generales del establecimiento, matrícula por especialidad, composición por género, pertenencia a pueblos originarios, nacionalidad y otras variables de interés.
+
+**Nota importante:** La matrícula de estudiantes corresponde a **2025**. Algunos datos complementarios corresponden a **2024**:
+- **Datos 2025:** Matrícula, especialidades, niveles de enseñanza, grados
+- **Datos 2024:** Pueblos originarios, internado, nacionalidad, categoría de asistencia, RFT (estos se actualizarán cuando estén disponibles oficialmente)
+
+# I. DATOS GENERALES
+
+```{r datos_generales, echo=FALSE, results='asis'}
+if (!is.null(params$datos_generales) && nrow(params$datos_generales) > 0) {
+  datos <- params$datos_generales[1, ]
+  datos1 <- params$datos_establecimiento[1, ]
+
+  cat(paste0("**RBD:** ", datos$rbd, "\n\n"))
+  cat(paste0("**Nombre del establecimiento:** ", datos$nom_rbd, "\n\n"))
+  cat(paste0("**Dependencia:** ", datos$cod_depe2, "\n\n"))
+  cat(paste0("**Sostenedor:** ", datos$nombre_sost, "\n\n"))
+  cat(paste0("**Nombre del/la director/a:** ", datos1$nombre_director, "\n\n"))
+  cat(paste0("**Zona de la RFT:** ", datos$rft, "\n\n"))
+  cat(paste0("**Región:** ", datos$nom_reg_rbd_a, "\n\n"))
+  cat(paste0("**DEPROV:** ", datos$nom_deprov_rbd, "\n\n"))
+  cat(paste0("**Comuna:** ", datos$nom_com_rbd, "\n\n"))
+  cat(paste0("**Dirección:** ", datos1$direccion, "\n\n"))
+  cat(paste0("**Ruralidad:** ", datos$RuralidadRBD, "\n\n"))
+
+} else {
+  cat("No hay datos generales disponibles.\n\n")
+}
+```
+
+# II. MATRÍCULA TP GENERAL
+
+```{r matricula_general, echo=FALSE, results='asis'}
+if (!is.null(params$resumen_matricula)) {
+  matricula <- params$resumen_matricula
+  cat(paste0("- Total Matrícula: ", matricula$total, "\n"))
+  cat(paste0("- Matrícula Hombres: ", matricula$hombres, "\n"))
+  cat(paste0("- Matrícula Mujeres: ", matricula$mujeres, "\n"))
+  cat(paste0("- Matrícula Jóvenes (3° y 4° Medio): ", matricula$matricula_jovenes, "\n"))
+  cat(paste0("- Matrícula Adultos (Total): ", matricula$matricula_adultos, "\n"))
+  cat(paste0("- Matrícula Adultos 1° Nivel (1° y 2° Medio Sólo Adultos): ", matricula$matricula_adultos_1nivel, "\n"))
+  cat(paste0("- Matrícula 3° Medio (Total): ", matricula$matricula_3medio, "\n"))
+  cat(paste0("- Matrícula 4° Medio (Total): ", matricula$matricula_4medio, "\n"))
+} else {
+  cat("No hay datos de matrícula disponibles.\n")
+}
+```
+
+
+```{r matricula_por_nivel, echo=FALSE}
+library(dplyr)
+library(flextable)
+
+if (!is.null(params$detalle_por_nivel) && nrow(params$detalle_por_nivel) > 0) {
+  
+  # Preparar detalle y renombrar niveles
+  detalle <- params$detalle_por_nivel %>%
+    mutate(
+      Nivel = case_when(
+        nivel == "Jóvenes" & cod_grado == 3 ~ "3° Medio",
+        nivel == "Jóvenes" & cod_grado == 4 ~ "4° Medio",
+        nivel == "Adultos" & cod_grado == 1 ~ "1° Nivel",
+        nivel == "Adultos" & cod_grado == 3 ~ "3° Medio",
+        nivel == "Adultos" & cod_grado == 4 ~ "4° Medio",
+        TRUE ~ as.character(cod_grado)
+      )
+    ) %>%
+    select(Enseñanza = nivel, Nivel, Total = total, Hombres = hombres, Mujeres = mujeres) %>%
+    mutate(Nivel = as.character(Nivel))
+  
+  # Agregar fila de totales
+  totales <- detalle %>%
+    summarise(
+      Enseñanza = "Total",
+      Nivel = "",
+      Total = sum(Total, na.rm = TRUE),
+      Hombres = sum(Hombres, na.rm = TRUE),
+      Mujeres = sum(Mujeres, na.rm = TRUE)
+    )
+  
+  detalle <- bind_rows(detalle, totales)
+  
+  # Mostrar tabla centrada (PDF usa kableExtra con scale_down; Word usa flextable)
+  if (knitr::is_latex_output()) {
+    tabla_centrada(detalle, caption = "Detalle de matrícula por nivel y grado")
+  } else {
+    flextable(detalle) %>%
+      bold(i = nrow(detalle), bold = TRUE) %>%             # fila de totales en negrita
+      hline_top(part = "header", border = fp_border(color="black", width = 1)) %>%  # línea superior del header
+      hline_bottom(part = "header", border = fp_border(color="black", width = 1)) %>% # línea inferior del header
+      vline(j = 1:2, border = fp_border(color="black", width = 1)) %>%             # líneas verticales en las dos primeras columnas
+      align(j = c("Total", "Hombres", "Mujeres"), align = "center", part = "all") %>%
+      align(align = "center", part = "all") %>%
+      set_caption("Detalle de matrícula por nivel y grado") %>%
+      autofit()
+  }
+  
+} else {
+  cat("No hay detalle por nivel disponible.\n")
+}
+```
+
+
+```{r grafico_matricula_genero, dpi=280, fig.align='center', echo=FALSE}
+
+if (!is.null(params$resumen_matricula)) {
+  matricula <- params$resumen_matricula
+  df_gen <- tibble::tibble(
+    Género = c("Hombres", "Mujeres"),
+    Porcentaje = c(
+      round(matricula$hombres / matricula$total * 100, 1),
+      round(matricula$mujeres / matricula$total * 100, 1)
+    )
+  )
+  
+  ggplot(df_gen, aes(x = "", y = Porcentaje, fill = Género)) +
+    geom_col(width = 1, color = "white") +
+    coord_polar(theta = "y") +
+    geom_text(aes(label = paste0(Porcentaje, "%")), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = "Distribución por género") +
+    theme_void() +
+    theme(
+      plot.title = element_text(size = 10, face = "bold"),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+panel.border = element_rect(color = "#8A8A8A", fill = NA, linewidth = 0.5)
+) +
+    scale_fill_manual(values = c("#FE6565", "#006FB3")) +
+    guides(fill = guide_legend(keywidth = unit(0.3, "cm"), keyheight = unit(0.3, "cm")))
+}
+```
+
+```{r matricula_especialidad, echo=FALSE, results='asis'}
+cat("# III. MATRÍCULA POR ESPECIALIDAD\n\n")
+if (!is.null(params$detalle_especialidades) && nrow(params$detalle_especialidades) > 0) {
+  if (knitr::is_latex_output()) {
+    tabla_centrada(params$detalle_especialidades, caption = NULL)
+  } else {
+    flextable(params$detalle_especialidades)  %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  }
+} else {
+  cat("No hay detalle de matrícula por especialidad disponible.\n")
+}
+```
+
+```{r grafico_especialidad_genero, dpi=280, echo=FALSE}
+
+df <- params$detalle_especialidades
+
+if (!is.null(df) && nrow(df) > 0 && all(c("Especialidad", "Hombres", "Mujeres") %in% colnames(df))) {
+  
+  # Transformar a formato largo para ggplot
+  df_long <- df %>%
+    select(Especialidad, Hombres, Mujeres) %>%
+    pivot_longer(cols = c(Hombres, Mujeres), names_to = "Género", values_to = "Cantidad") %>%
+    group_by(Especialidad) %>%
+    mutate(Total = sum(Cantidad, na.rm = TRUE)) %>%
+    ungroup() %>%
+    mutate(Porcentaje = ifelse(Total > 0, Cantidad / Total * 100, 0))
+  
+  # Graficar
+  ggplot(df_long, aes(x = Especialidad, y = Porcentaje, fill = Género)) +
+    geom_col(color = "white", position = "stack") +
+    geom_text(aes(label = paste0(round(Porcentaje, 1), "%")),
+              position = position_stack(vjust = 0.5), size = 3) +
+    scale_fill_manual(values = c("Hombres" = "#FE6565", "Mujeres" = "#006FB3")) +
+    labs(title = "Distribución de matrícula por género y especialidad",
+         x = "Especialidad", y = "Porcentaje") +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(size = 10, face = "bold"),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 8),
+      panel.border = element_rect(color = "#8A8A8A", fill = NA, linewidth = 0.5)
+    )
+  
+} else {
+  cat("No hay datos suficientes para graficar matrícula por especialidad y género.\n")
+}
+```
+
+```{r resumen_etnias, echo=FALSE, results='asis'}
+cat("# IV. OTROS DATOS DE MATRÍCULA\n\n## A. ETNIAS (datos 2024)\n\n")
+if (!is.null(params$resumen_etnias) && nrow(params$resumen_etnias) > 0) {
+  if (knitr::is_latex_output()) {
+    tabla_centrada(params$resumen_etnias)
+  } else {
+    flextable(params$resumen_etnias)  %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  }
+} else {
+  cat("No hay datos de estudiantes que declaran etnia.\n")
+}
+```
+
+```{r extranjeros, echo=FALSE, results='asis'}
+cat("\n## B. ESTUDIANTES EXTRANJEROS (datos 2024)\n\n")
+if (!is.null(params$extranjeros) && nrow(params$extranjeros) > 0) {
+  if (knitr::is_latex_output()) {
+    tabla_centrada(params$extranjeros)
+  } else {
+    flextable(params$extranjeros)  %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  }
+} else {
+  cat("No hay datos de estudiantes extranjeros disponibles.\n")
+}
+```
+
+```{r origen_extranjeros, echo=FALSE, results='asis'}
+cat("\n## C. ORIGEN DE ESTUDIANTES EXTRANJEROS (datos 2024)\n\n")
+if (!is.null(params$origen_extranjeros) && nrow(params$origen_extranjeros) > 0) {
+  if (knitr::is_latex_output()) {
+    tabla_centrada(params$origen_extranjeros)
+  } else {
+    flextable(params$origen_extranjeros)  %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  }
+} else {
+  cat("No hay datos sobre origen de estudiantes extranjeros disponibles.\n")
+}
+```
+
+> ~**Nota:** En algunos casos, los establecimientos han declarado a “Chile” el país de origen de estudiantes informados como extranjeros. Esto puede deberse a errores de registro en la base de datos del establecimiento. Para efectos de este reporte, esos casos se han clasificado como “Desconocido”.~
+
+```{r tasa_titulacion_establecimiento, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+# Partimos de los datos del establecimiento pasados como parámetro
+cat("# V. TASA DE TITULACIÓN AL AÑO DE EGRESO\n\n")
+df_estab <- params$datos_establecimiento
+
+# Totales del establecimiento
+totales_estab <- df_estab %>%
+  summarise(
+    total_egresados = sum(egre_2023, na.rm = TRUE),
+    total_titulados = sum(titu_2024_egre_2023, na.rm = TRUE)
+  ) %>%
+  mutate(
+    tasa_titulacion = ifelse(total_egresados > 0,
+                              pmin(total_titulados / total_egresados, 1),
+                              NA_real_),
+    tasa_titulacion_pct = round(100 * tasa_titulacion, 1)
+  )
+
+# Mensaje explicativo
+cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2024 dividido por el total de egresados 2023. Se trunca al 100% si corresponde.\n\n")
+
+# Mostramos la tabla con flextable
+totales_estab %>%
+  select(total_egresados, total_titulados, tasa_titulacion_pct) %>%
+  rename(
+    `Total Egresados 2023` = total_egresados,
+    `Total Titulados 2024` = total_titulados,
+    `Tasa de Titulación (%)` = tasa_titulacion_pct
+  ) %>%
+  tabla_centrada()
+```
+
+```{r docentes_establecimiento, echo=FALSE, results='asis'}
+cat("# VI. DOCENTES EMTP 2025\n\n")
+if (!is.null(params$resumen_subsector) && nrow(params$resumen_subsector) > 0) {
+  cat("Distribución de docentes por especialidad:\n\n")
+  
+  codigos_especialidades <- tibble::tibble(
+    Especialidad = c(
+      "41001","41002","41003","41004",
+      "51001","51002","51003","51004","51005","51006",
+      "52008","52009","52010","52011","52012",
+      "53014","53015","53016",
+      "54018","54019","54020",
+      "55022","55023",
+      "56025","56026",
+      "57028","57029","57030","57031",
+      "58033","58034","58035",
+      "61001","61002",
+      "62004","62005","62006","62007",
+      "63009","63010",
+      "71001","71002","71003","71004",
+      "72006",
+      "81001","81002","81003","81004",
+      "Formación General"
+    ),
+    Nombre = c(
+      "Administración","Contabilidad","Secretariado","Ventas",
+      "Edificación","Terminaciones de Construcción","Montaje Industrial","Obras Viales y de Infraestructura","Instalaciones sanitarias","Refrigeración y climatización",
+      "Mecánica industrial","Construcciones metálicas","Mecánica","Matricería","Mecánica de mantención de aeronaves",
+  "Electricidad","Electrónica","Telecomunicaciones",
+      "Explotación minera","Metalurgia extractiva","Asistencia en geología",
+      "Gráfica","Dibujo técnico",
+      "Operación de planta química","Laboratorio químico",
+      "Tejido","Textil","Vestuario y confección textil","Productos del cuero",
+      "Conectividad y Redes","Programación","Telecomunicaciones",
+      "Elaboración industrial de alimentos","Servicio de alimentación colectiva",
+      "Atención de párvulos","Atención de adultos mayores","Atención de enfermos","Atención social y recreativa",
+      "Servicio de Turismo","Servicio de Hotelería",
+      "Forestal","Procesamiento de la madera","Productos de la madera","Celulosa y papel",
+      "Agropecuaria",
+      "Naves mercantes y especiales","Pesquería","Acuicultura","Operación portuaria",
+      "Formación General"
+    )
+  )
+  
+  # Asegurar que exista la columna 'Especialidad' para el join; si no, intentar derivarla
+  resumen_subsector <- params$resumen_subsector
+  if (!("Especialidad" %in% names(resumen_subsector))) {
+    # Si existe SUBSECTOR1/SUBSECTOR2 o SUBSECTOR genérico, conviértelo a texto
+    if ("SUBSECTOR" %in% names(resumen_subsector)) {
+      resumen_subsector <- resumen_subsector %>% dplyr::mutate(Especialidad = as.character(SUBSECTOR))
+    } else if ("SUBSECTOR1" %in% names(resumen_subsector)) {
+      resumen_subsector <- resumen_subsector %>% dplyr::mutate(Especialidad = as.character(SUBSECTOR1))
+    } else {
+      # Último recurso: crear columna vacía para no romper el reporte
+      resumen_subsector <- resumen_subsector %>% dplyr::mutate(Especialidad = NA_character_)
+    }
+  }
+
+  resumen_subsector <- resumen_subsector %>%
+    left_join(codigos_especialidades, by = "Especialidad") %>%
+    group_by(Nombre) %>%
+    summarise(
+      Total   = n(),
+      Hombres = sum(DOC_GENERO == 1, na.rm = TRUE),
+      Mujeres = sum(DOC_GENERO == 2, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      `% Hombres` = round(100 * Hombres / Total, 1),
+      `% Mujeres` = round(100 * Mujeres / Total, 1)
+    )
+  
+  # Ordenar con Formación General al inicio
+  resumen_subsector <- resumen_subsector %>%
+    arrange(desc(Nombre == "Formación General"), Nombre)
+  
+  # Agregar totales
+  totales <- tibble::tibble(
+    Nombre = c("Total incluyendo FG", "Total sin FG"),
+    Total = c(sum(resumen_subsector$Total), sum(resumen_subsector$Total[resumen_subsector$Nombre != "Formación General"])),
+    Hombres = c(sum(resumen_subsector$Hombres), sum(resumen_subsector$Hombres[resumen_subsector$Nombre != "Formación General"])),
+    Mujeres = c(sum(resumen_subsector$Mujeres), sum(resumen_subsector$Mujeres[resumen_subsector$Nombre != "Formación General"])),
+    `% Hombres` = round(100 * c(sum(resumen_subsector$Hombres), sum(resumen_subsector$Hombres[resumen_subsector$Nombre != "Formación General"])) / 
+                         c(sum(resumen_subsector$Total), sum(resumen_subsector$Total[resumen_subsector$Nombre != "Formación General"])), 1),
+    `% Mujeres` = round(100 * c(sum(resumen_subsector$Mujeres), sum(resumen_subsector$Mujeres[resumen_subsector$Nombre != "Formación General"])) / 
+                         c(sum(resumen_subsector$Total), sum(resumen_subsector$Total[resumen_subsector$Nombre != "Formación General"])), 1)
+  )
+  
+  resumen_subsector <- bind_rows(resumen_subsector, totales)
+  
+  # Crear flextable y poner totales en negrita
+  filas_totales <- which(resumen_subsector$Nombre %in% c("Total incluyendo FG", "Total sin FG"))
+  if (knitr::is_latex_output()) {
+    tabla_centrada(resumen_subsector, caption = "Docentes según especialidad y sexo")
+  } else {
+    ft <- flextable::flextable(resumen_subsector)
+    ft %>%
+      flextable::bold(i = filas_totales, bold = TRUE) %>%
+      flextable::align(align = "center", part = "all") %>%
+      flextable::set_caption("Docentes según especialidad y sexo") %>%
+      flextable::autofit()
+  }
+  
+} else {
+  cat("No se dispone de información sobre especialidades para este establecimiento.\n")
+}
+```
+> ~**Nota:** Se considera “Formación General” a aquellos docentes declarados como responsables de asignaturas de formación general en un curso de especialidad EMTP.
+
+# VII. ACCESO A RECURSOS
+
+## A. CONCURSO DE EQUIPAMIENTO REGULAR
+
+```{r concurso_equipamiento, echo=FALSE}
+if (!is.null(params$datos_establecimiento)) {
+  df <- params$datos_establecimiento
+  
+  if ("EquipamientoRegular_Adjudica" %in% colnames(df)) {
+    if (df$EquipamientoRegular_Adjudica == 1) {
+      cat("Este establecimiento fue adjudicado con fondos del Concurso de Equipamiento Regular. A continuación se detallan los montos por año:\n")
+      
+      tabla <- tibble(
+        Año = 2020:2024,
+        Monto = c(df$EquipamientoRegular_2020,
+                  df$EquipamientoRegular_2021,
+                  df$EquipamientoRegular_2022,
+                  df$EquipamientoRegular_2023,
+                  df$EquipamientoRegular_2024)
+      )
+      
+      if (knitr::is_latex_output()) {
+        tabla_centrada(tabla, caption = "Montos adjudicados por año (en pesos chilenos)")
+      } else {
+        tabla %>%
+          flextable::flextable() %>%
+          flextable::colformat_num(j = "Monto", big.mark = ".", decimal.mark = ",") %>%
+          flextable::align(align = "center", part = "all") %>%
+          flextable::set_caption("Montos adjudicados por año (en pesos chilenos)") %>%
+          flextable::autofit()
+      }
+    } else {
+      cat("Este establecimiento no ha sido adjudicado con fondos del Concurso de Equipamiento Regular.")
+    }
+  }
+}
+```
+
+```{r especialidades_equipamiento, echo=FALSE, results='asis'}
+library(stringr)
+if (!is.null(params$datos_establecimiento)) {
+  df <- params$datos_establecimiento
+  
+  espe_anos <- list(
+    "2020" = df$EquipamientoRegular_2020_espe,
+    "2021" = df$EquipamientoRegular_2021_espe,
+    "2022" = df$EquipamientoRegular_2022_espe,
+    "2023" = df$EquipamientoRegular_2023_espe,
+    "2024" = df$EquipamientoRegular_2024_espe
+  )
+  
+  for (ano in names(espe_anos)) {
+    especialidades <- espe_anos[[ano]]
+    
+    if (!is.null(especialidades) && !is.na(especialidades)) {
+      
+      especialidades_str <- as.character(especialidades)
+      especialidades_str <- str_trim(especialidades_str)
+      
+      if (especialidades_str != "") {
+        
+        cat(paste0("### Especialidades adjudicadas en ", ano, " (información disponible a 2024)\n\n"))
+        
+        # Mostrar texto crudo para ver qué hay
+        cat(paste0("Especialidades: '", especialidades_str, "'\n\n"))
+        
+        espe_vec <- unlist(strsplit(especialidades_str, split = ","))
+        espe_vec <- str_trim(espe_vec)
+        espe_vec <- espe_vec[espe_vec != ""]
+        
+        if(length(espe_vec) > 0){
+          tabla_espe <- tibble::tibble(Especialidad = espe_vec)
+          
+          if (knitr::is_latex_output()) {
+            tabla_centrada(tabla_espe, caption = paste0("Especialidades con recursos adjudicados en ", ano))
+          } else {
+            flextable::flextable(tabla_espe) %>%
+              flextable::align(align = "center", part = "all") %>%
+              flextable::set_caption(paste0("Especialidades con recursos adjudicados en ", ano)) %>%
+              flextable::autofit() %>%
+              print()
+          }
+        } else {
+          cat("No se encontraron especialidades después de separar el texto.\n\n")
+        }
+      }
+    }
+  }
+}
+```
+
+## B. CONCURSO DE EQUIPAMIENTO SLEP
+
+```{r texto_equipamiento_slep, echo=FALSE, results='asis'}
+if (!is.null(params$datos_equipamiento)) {
+  df <- params$datos_equipamiento
+  # Verificar si es SLEP (código 5 o texto "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA")
+  es_slep <- (!is.null(df$cod_depe2) && length(df$cod_depe2) == 1 && 
+              (as.character(df$cod_depe2) == "5" || 
+               toupper(as.character(df$cod_depe2)) == "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA"))
+  
+  if (es_slep) {
+    slep_cols <- c("EquipamientoSLEP_2023", "EquipamientoSLEP_2024", "EquipamientoSLEP_TOTAL")
+    if (all(slep_cols %in% colnames(df)) && any(as.numeric(df[, slep_cols]) > 0, na.rm = TRUE)) {
+      cat("")
+    }
+  } else {
+    cat("Este establecimiento no aplica para el equipamiento SLEP.\n\n")
+  }
+}
+```
+
+```{r tabla_equipamiento_slep, echo=FALSE}
+if (!is.null(params$datos_equipamiento)) {
+  df <- params$datos_equipamiento
+  # Verificar si es SLEP (código 5 o texto "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA")
+  es_slep <- (!is.null(df$cod_depe2) && length(df$cod_depe2) == 1 && 
+              (as.character(df$cod_depe2) == "5" || 
+               toupper(as.character(df$cod_depe2)) == "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA"))
+  
+  if (es_slep) {
+    slep_cols <- c("EquipamientoSLEP_2023", "EquipamientoSLEP_2024", "EquipamientoSLEP_TOTAL")
+    if (all(slep_cols %in% colnames(df)) && any(as.numeric(df[, slep_cols]) > 0, na.rm = TRUE)) {
+      
+monto_2023 <- as.numeric(df$EquipamientoSLEP_2023)
+monto_2024 <- as.numeric(df$EquipamientoSLEP_2024)
+monto_total <- sum(c(monto_2023, monto_2024), na.rm = TRUE)
+
+tabla <- tibble::tibble(
+  Año = c("2023", "2024", "Total"),
+  Monto = c(monto_2023, monto_2024, monto_total)
+)
+      
+      if (knitr::is_latex_output()) {
+        tabla_centrada(tabla, caption = "Montos adjudicados por año vía SLEP (en pesos chilenos)")
+      } else {
+        tabla %>%
+          flextable::flextable() %>%
+          flextable::colformat_num(j = "Monto", big.mark = ".", decimal.mark = ",") %>%
+          flextable::align(align = "center", part = "all") %>%
+          flextable::set_caption("Montos adjudicados por año vía SLEP (en pesos chilenos)") %>%
+          flextable::autofit()
+      }
+    }
+  }
+}
+```
+
+
+```{r asistencia_anual, echo=FALSE, results='asis'}
+if (!is.null(params$datos_generales1) && nrow(params$datos_generales1) > 0) {
+
+  datos <- params$datos_generales1
+
+  if ("categoria_asis_anual" %in% names(datos)) {
+
+    # 1) Normalizar categoria_asis_anual a número 1-4, aunque venga como "1: ..." o factor
+    datos_asistencia <- datos %>%
+      mutate(
+        categoria_raw = as.character(categoria_asis_anual),
+        categoria_num = suppressWarnings(as.numeric(stringr::str_extract(categoria_raw, "^[0-9]")))
+      ) %>%
+      # 2) Mapear a etiquetas oficiales
+      mutate(
+        Categoria = dplyr::case_when(
+          categoria_num == 1 ~ "Inasistencia crítica (<50%)",
+          categoria_num == 2 ~ "Inasistencia grave (50%-84%)",
+          categoria_num == 3 ~ "Inasistencia reiterada (85%-89%)",
+          categoria_num == 4 ~ "Asistencia esperada (≥90%)",
+          TRUE ~ NA_character_
+        )
+      ) %>%
+      filter(!is.na(Categoria)) %>%
+      # 3) Contar estudiantes por categoría
+      dplyr::count(Categoria, name = "Estudiantes") %>%
+      # 4) Asegurar las 4 categorías aunque alguna no exista
+      tidyr::complete(
+        Categoria = c(
+          "Inasistencia crítica (<50%)",
+          "Inasistencia grave (50%-84%)",
+          "Inasistencia reiterada (85%-89%)",
+          "Asistencia esperada (≥90%)"
+        ),
+        fill = list(Estudiantes = 0)
+      ) %>%
+      # 5) Ordenar 1→4 y calcular porcentaje
+      mutate(
+        Categoria = factor(
+          Categoria,
+          levels = c(
+            "Inasistencia crítica (<50%)",
+            "Inasistencia grave (50%-84%)",
+            "Inasistencia reiterada (85%-89%)",
+            "Asistencia esperada (≥90%)"
+          )
+        ),
+        Porcentaje = round(100 * Estudiantes / sum(Estudiantes), 1)
+      ) %>%
+      arrange(Categoria)
+
+    if (knitr::is_latex_output()) {
+      tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual")
+    } else {
+      flextable::flextable(datos_asistencia) %>%
+        flextable::set_caption("Distribución de estudiantes según categoría de asistencia anual") %>%
+        flextable::colformat_num(j = "Porcentaje", digits = 1, suffix = "%") %>%
+        flextable::align(align = "center", part = "all") %>%
+        flextable::autofit()
+    }
+
+  } else {
+    cat("No existe la variable 'categoria_asis_anual' en el dataset.\n")
+  }
+
+} else {
+  cat("No hay datos de asistencia anual disponibles.\n")
+}
+```
+
+```{r grafico_asistencia_anual, dpi=280, fig.align='center', echo=FALSE}
+if (!is.null(params$datos_generales1) && nrow(params$datos_generales1) > 0) {
+
+  datos <- params$datos_generales1
+
+  if ("categoria_asis_anual" %in% names(datos)) {
+
+    datos_asistencia <- datos %>%
+      mutate(
+        categoria_raw = as.character(categoria_asis_anual),
+        categoria_num = suppressWarnings(as.numeric(stringr::str_extract(categoria_raw, "^[0-9]")))
+      ) %>%
+      mutate(
+        Categoria = dplyr::case_when(
+          categoria_num == 1 ~ "Inasistencia crítica (<50%)",
+          categoria_num == 2 ~ "Inasistencia grave (50%-84%)",
+          categoria_num == 3 ~ "Inasistencia reiterada (85%-89%)",
+          categoria_num == 4 ~ "Asistencia esperada (≥90%)",
+          TRUE ~ NA_character_
+        )
+      ) %>%
+      filter(!is.na(Categoria)) %>%
+      dplyr::count(Categoria, name = "Estudiantes") %>%
+      tidyr::complete(
+        Categoria = c(
+          "Inasistencia crítica (<50%)",
+          "Inasistencia grave (50%-84%)",
+          "Inasistencia reiterada (85%-89%)",
+          "Asistencia esperada (≥90%)"
+        ),
+        fill = list(Estudiantes = 0)
+      ) %>%
+      mutate(
+        Categoria = factor(
+          Categoria,
+          levels = c(
+            "Inasistencia crítica (<50%)",
+            "Inasistencia grave (50%-84%)",
+            "Inasistencia reiterada (85%-89%)",
+            "Asistencia esperada (≥90%)"
+          )
+        ),
+        Porcentaje = round(100 * Estudiantes / sum(Estudiantes), 1)
+      )
+
+    # Gráfico de barras agrupadas
+    ggplot(datos_asistencia, aes(x = Categoria, y = Porcentaje, fill = Categoria)) +
+      geom_col(position = "dodge", color = "white") +
+      geom_text(aes(label = paste0(Porcentaje, "%")),
+                position = position_dodge(width = 1), vjust = -0.3, size = 3) +
+      scale_fill_manual(values = c(
+        "Inasistencia crítica (<50%)" = "#FE6565",
+        "Inasistencia grave (50%-84%)" = "#F7A35C",
+        "Inasistencia reiterada (85%-89%)" = "#A8B7C7",
+        "Asistencia esperada (≥90%)" = "#006FB3"
+      )) +
+      labs(title = "Distribución de estudiantes según asistencia anual",
+           x = "Categoría de asistencia", y = "Porcentaje") +
+      theme_minimal(base_size = 10) +
+      theme(
+        legend.position = "none",
+        plot.title = element_text(face = "bold", size = 10),
+        axis.text.x = element_text(angle = 20, hjust = 1)
+      )
+
+  } else {
+    cat("No existe la variable 'categoria_asis_anual' en el dataset.\n")
+  }
+
+} else {
+  cat("No hay datos de asistencia anual disponibles.\n")
+}
+```
+
+
+
+```{r simce_resultados, echo=FALSE, results='asis'}
+if (!is.null(params$datos_establecimiento) && nrow(params$datos_establecimiento) > 0) {
+  df <- params$datos_establecimiento
+  cat("# IX. RESULTADOS SIMCE - II° MEDIO\n\n")
+  if ("prom_lect2m_rbd" %in% names(df)) {
+    cat("### Puntajes Promedio\n")
+    cat(paste0("- Lectura: ", df$prom_lect2m_rbd, "\n"))
+    cat(paste0("- Matemática: ", df$prom_mate2m_rbd, "\n\n"))
+
+    cat("### Cambios respecto a evaluación anterior\n")
+    cat(paste0("- Lectura: ", df$dif_lect2m_rbd, ifelse(df$sigdif_lect2m_rbd == 1, " (significativo)", ""), "\n"))
+    cat(paste0("- Matemática: ", df$dif_mate2m_rbd, ifelse(df$sigdif_mate2m_rbd == 1, " (significativo)", ""), "\n\n"))
+
+cat(paste0("### Comparación con establecimientos del mismo GSE (", df$gse_agencia, ")\n"))
+cat(paste0("- Lectura: ", df$difgru_lect2m_rbd, ifelse(df$siggru_lect2m_rbd == 1, " (significativo)", ""), "\n"))
+cat(paste0("- Matemática: ", df$difgru_mate2m_rbd, ifelse(df$siggru_mate2m_rbd == 1, " (significativo)", ""), "\n\n"))
+
+    cat("### Distribución por Estándar\n")
+    tabla_simce <- tibble::tibble(
+      Asignatura = c("Lectura", "Lectura", "Lectura", "Matemática", "Matemática", "Matemática"),
+      Nivel = c("Insuficiente", "Elemental", "Adecuado", "Insuficiente", "Elemental", "Adecuado"),
+      Porcentaje = c(df$palu_eda_ins_lect2m_rbd, df$palu_eda_ele_lect2m_rbd, df$palu_eda_ade_lect2m_rbd,
+                     df$palu_eda_ins_mate2m_rbd, df$palu_eda_ele_mate2m_rbd, df$palu_eda_ade_mate2m_rbd)
+    )
+
+    if (knitr::is_latex_output()) {
+      tabla_centrada(tabla_simce, caption = "Distribución de estudiantes según nivel SIMCE")
+    } else {
+      flextable::flextable(tabla_simce) %>%
+        flextable::colformat_num(j = "Porcentaje", digits = 1, suffix = "%") %>%
+        flextable::align(align = "center", part = "all") %>%
+        flextable::set_caption("Distribución de estudiantes según nivel SIMCE") %>%
+        flextable::autofit()
+    }
+  } else {
+    cat("No hay datos SIMCE disponibles para este establecimiento.\n")
+  }
+}
+```
+
+```{r grafico_simce_minuta, dpi=280, fig.align='center', echo=FALSE}
+if (!is.null(params$datos_establecimiento) && nrow(params$datos_establecimiento) > 0) {
+  df <- params$datos_establecimiento
+  
+  if ("prom_lect2m_rbd" %in% names(df)) {
+    tabla_simce <- tibble::tibble(
+      Asignatura = rep(c("Lectura", "Matemática"), each = 3),
+      Nivel = rep(c("Insuficiente", "Elemental", "Adecuado"), 2),
+      Porcentaje = c(
+        as.numeric(str_replace(df$palu_eda_ins_lect2m_rbd, "%", "")),
+        as.numeric(str_replace(df$palu_eda_ele_lect2m_rbd, "%", "")),
+        as.numeric(str_replace(df$palu_eda_ade_lect2m_rbd, "%", "")),
+        as.numeric(str_replace(df$palu_eda_ins_mate2m_rbd, "%", "")),
+        as.numeric(str_replace(df$palu_eda_ele_mate2m_rbd, "%", "")),
+        as.numeric(str_replace(df$palu_eda_ade_mate2m_rbd, "%", ""))
+      )
+    )
+    
+    ggplot(tabla_simce, aes(x = Asignatura, y = Porcentaje/100, fill = Nivel)) +
+      geom_col(position = "fill", color = "white") +
+      geom_text(aes(label = paste0(round(Porcentaje, 1), "%")),
+                position = position_fill(vjust = 0.5), size = 3) +
+      scale_fill_manual(values = c("Insuficiente" = "#FE6565", 
+                                   "Elemental" = "#A8B7C7", 
+                                   "Adecuado" = "#006FB3")) +
+      scale_y_continuous(labels = scales::percent) +
+      labs(title = "Distribución SIMCE (II° Medio)",
+           x = "Asignatura", y = "Porcentaje") +
+      theme(
+        legend.title = element_blank(),
+        panel.border = element_rect(color = "#8A8A8A", fill = NA, size = 0.5),
+        plot.title = element_text(size = 10, face = "bold"),
+        legend.text = element_text(size = 8)
+      )
+  }
+}
+```
+
+```{r idps_resultados, echo=FALSE, warning=FALSE, message=FALSE, results='asis'}
+cat("# X. Indicadores de Desarrollo Personal y Social (IDPS) - II° Medio\n\n")
+.idps_ok <- FALSE
+if (!is.null(params$datos_establecimiento) && nrow(params$datos_establecimiento) > 0) {
+  df <- params$datos_establecimiento
+  .p <- suppressWarnings(as.numeric(c(df$IDPS1_Puntaje[1], df$IDPS2_Puntaje[1],
+                                      df$IDPS3_Puntaje[1], df$IDPS4_Puntaje[1])))
+  if (any(!is.na(.p))) {
+    .idps_ok <- TRUE
+    idps_tab <- tibble::tibble(
+      Indicador = c("Autoestima Académica y Motivación Escolar", "Clima de Convivencia Escolar",
+                    "Participación y Formación Ciudadana", "Hábitos de Vida Saludable"),
+      `Puntaje (0-100)` = round(.p),
+      Nivel = ifelse(is.na(.p), "s/i", ifelse(.p < 60, "Bajo", ifelse(.p < 75, "Medio", "Alto")))
+    )
+    cat("Escala 0-100 por indicador. Referencia: **Bajo** (<60), **Medio** (60-74), **Alto** (>=75).\n\n")
+    tabla_centrada(idps_tab, caption = "Resultados IDPS por indicador - II° Medio")
+  }
+}
+if (!.idps_ok) cat("_No hay información IDPS disponible para este establecimiento._\n\n")
+```
+
+```{r asistencia_establecimiento, echo=FALSE, results='asis'}
+cat("# XI. Asistencia anual de los estudiantes - II° Medio\n\n")
+.a_ok <- FALSE
+if (!is.null(params$asistencia) && is.data.frame(params$asistencia) && nrow(params$asistencia) > 0) {
+  lab <- c("1"="Inasistencia crítica (<50%)","2"="Inasistencia grave (50-84%)",
+           "3"="Inasistencia reiterada (85-89%)","4"="Asistencia esperada (>=90%)")
+  a <- params$asistencia
+  a$Categoria <- lab[as.character(a$categoria_asis_anual)]
+  a <- a[!is.na(a$Categoria), , drop = FALSE]
+  if (nrow(a) > 0) {
+    .a_ok <- TRUE
+    a <- a[order(a$categoria_asis_anual), ]
+    a$Pct <- round(100 * a$n / sum(a$n), 1)
+    tab <- tibble::tibble(`Categoría de asistencia` = a$Categoria,
+                          Estudiantes = a$n, `%` = a$Pct)
+    if (!is.null(params$asis_prom) && is.finite(suppressWarnings(as.numeric(params$asis_prom)))) {
+      cat(sprintf("**Asistencia promedio del establecimiento: %s%%**\n\n", gsub("\\.", ",", sprintf("%.1f", as.numeric(params$asis_prom)))))
+    }
+    cat("Categoría de asistencia anual 2025 de los estudiantes EMTP del establecimiento.\n\n")
+    tabla_centrada(tab, caption = "Asistencia anual por categoría")
+  }
+}
+if (!.a_ok) cat("_No hay información de asistencia disponible para este establecimiento._\n\n")
+```
+
+```{r preparar_datos, echo=FALSE, include=FALSE}
+tiene_idps_graficos <- exists("idps_long") && is.data.frame(idps_long) && nrow(idps_long) > 0 &&
+  !all(is.na(idps_long$`% Bajo`))
+
+if (tiene_idps_graficos) {
+dicc_indicadores <- tibble(
+  Dimensión = c("Autopercepción y autovaloración académica", "Motivación escolar", 
+                "Ambiente de respeto", "Ambiente organizado", "Ambiente seguro",
+                "Participación", "Vida democrática", "Sentido de pertenencia",
+                "Hábitos de vida activa", "Hábitos alimenticios", "Hábitos de autocuidado"),
+  Indicador = factor(c("AM", "AM", "CC", "CC", "CC", "PF", "PF", "PF", "HV", "HV", "HV"),
+                     levels = c("AM", "CC", "PF", "HV"))
+)
+
+idps_long2 <- idps_long %>%
+  left_join(dicc_indicadores, by = "Dimensión") %>%
+  mutate(Subdimensión = Descripción) %>%
+  select(Indicador, Dimensión, Subdimensión, `% Bajo`, `% Medio`, `% Alto`)
+
+plot_por_indicador_simce <- function(indicador) {
+  df_plot <- idps_long2 %>%
+    filter(Indicador == indicador) %>%
+    pivot_longer(cols = c(`% Bajo`, `% Medio`, `% Alto`), names_to = "Nivel", values_to = "Porcentaje") %>%
+    mutate(
+      Subdimensión = factor(Subdimensión, levels = unique(Subdimensión)),
+      Nivel = factor(Nivel, levels = c("% Bajo", "% Medio", "% Alto"),
+                     labels = c("Insuficiente", "Elemental", "Adecuado"))
+    )
+  
+  ggplot(df_plot, aes(x = Subdimensión, y = Porcentaje / 100, fill = Nivel)) +
+    geom_col(position = "fill", color = "white") +
+    geom_text(aes(label = paste0(round(Porcentaje, 1), "%")),
+              position = position_fill(vjust = 0.5), size = 3) +
+    scale_fill_manual(values = c("Insuficiente" = "#FE6565", 
+                                 "Elemental" = "#A8B7C7", 
+                                 "Adecuado" = "#006FB3")) +
+    scale_y_continuous(labels = scales::percent) +
+    labs(title = paste0("Distribución por nivel - Indicador ", indicador),
+         x = "Subdimensión",
+         y = "Porcentaje") +
+    theme(
+      legend.title = element_blank(),
+      panel.border = element_rect(color = "#8A8A8A", fill = NA, size = 0.5),
+      plot.title = element_text(size = 10, face = "bold"),
+      legend.text = element_text(size = 8),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 8)
+    )
+}
+} # end if (tiene_idps_graficos)
+```
+
+```{r grafico_AM, dpi=280, fig.align='center', echo=FALSE}
+if (exists("tiene_idps_graficos") && isTRUE(tiene_idps_graficos)) plot_por_indicador_simce("AM")
+```
+
+```{r grafico_CC, dpi=280, fig.align='center', echo=FALSE}
+if (exists("tiene_idps_graficos") && isTRUE(tiene_idps_graficos)) plot_por_indicador_simce("CC")
+```
+
+```{r grafico_HV, dpi=280, fig.align='center', echo=FALSE}
+if (exists("tiene_idps_graficos") && isTRUE(tiene_idps_graficos)) plot_por_indicador_simce("HV")
+```
+
+```{r grafico_PF, dpi=280, fig.align='center', echo=FALSE}
+if (exists("tiene_idps_graficos") && isTRUE(tiene_idps_graficos)) plot_por_indicador_simce("PF")
+```

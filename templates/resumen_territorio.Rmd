@@ -1,0 +1,823 @@
+---
+title: ""
+output: 
+  word_document:
+    reference_docx: plantilla_minuta.docx
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \renewcommand{\tablename}{Cuadro}
+  - \renewcommand{\figurename}{Figura}
+params:
+  nombre_territorio: NA
+  territorio_filtrado: NA
+  resumen_matricula: NA
+  detalle_especialidades: NA
+  resumen_etnias: NA
+  extranjeros: NA
+  origen_extranjeros: NA
+  rural_dependencia: NA
+  base_apoyo: NA
+  docentes_emtp: NA
+  resumen_subsector: NA
+  incluir_tabla: FALSE
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(stringr)
+library(flextable)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+
+# Helper para centrar tablas y escalar en PDF si son anchas
+tabla_centrada <- function(df, caption = NULL, font_size = NULL) {
+  if (knitr::is_latex_output()) {
+    k <- knitr::kable(df, format = "latex", booktabs = TRUE, longtable = FALSE, caption = caption, align = 'c')
+    k <- kableExtra::kable_styling(k, full_width = FALSE, position = "center",
+                                   latex_options = c("HOLD_position", "scale_down"))
+    if (!is.null(font_size)) {
+      k <- kableExtra::kable_styling(k, font_size = font_size)
+    }
+    return(k)
+  } else {
+    ft <- flextable::flextable(df)
+    if (!is.null(caption)) ft <- flextable::set_caption(ft, caption)
+    ft <- flextable::align(ft, align = "center", part = "all") %>%
+      flextable::autofit()
+    return(ft)
+  }
+}
+```
+
+```{r titulo, results='asis', echo=FALSE}
+cat(paste0("# RESUMEN DEL TERRITORIO: ", toupper(params$nombre_territorio), " - DATOS 2024/2025\n\n"))
+```
+
+> Este informe resume los datos para la Educación Media Técnico-Profesional (EMTP) del territorio. La información proviene de registros oficiales del Ministerio de Educación e incluye matrícula general, especialidades, género, pueblos originarios, nacionalidad, dependencia administrativa, acceso a recursos, académicos y datos de indicadores personales y sociales (IDPS).
+
+**Nota:** La matrícula de estudiantes corresponde a **2025**. Algunos datos complementarios corresponden a **2024**:
+- **Datos 2025:** Matrícula, especialidades, niveles de enseñanza, grados
+- **Datos 2024:** Pueblos originarios, embarazo, internado, nacionalidad, categoría de asistencia (estos se actualizarán cuando estén disponibles)
+
+# I. MATRÍCULA GENERAL
+
+```{r resumen_general, echo=FALSE, results='asis'}
+df <- params$territorio_filtrado
+
+if (!is.null(params$especialidad_filtrada) && params$especialidad_filtrada != "Todas") {
+  df <- df %>% filter(nom_espe == params$especialidad_filtrada)
+}
+
+resumen <- df %>%
+  summarise(
+    Total = n(),
+    Hombres = sum(gen_alu == 1, na.rm = TRUE),
+    Mujeres = sum(gen_alu == 2, na.rm = TRUE),
+    RBD = n_distinct(rbd)   # Cantidad de establecimientos
+  ) %>%
+  mutate(
+    `% Hombres` = round(100 * Hombres / Total, 1),
+    `% Mujeres` = round(100 * Mujeres / Total, 1)
+  )
+
+tabla_centrada(resumen)
+```
+
+```{r grafico_pastel, dpi=280, fig.align='center', echo=FALSE}
+# Gráfico de torta - Matrícula general
+if (nrow(resumen) > 0) {
+  resumen_long <- resumen %>%
+    select(`% Hombres`, `% Mujeres`) %>%
+    tidyr::pivot_longer(cols = everything(), names_to = "Género", values_to = "Porcentaje")
+  
+  ggplot(resumen_long, aes(x = "", y = Porcentaje, fill = Género)) +
+    geom_col(width = 1, color = "white") +
+    coord_polar(theta = "y") +
+    geom_text(aes(label = paste0(Porcentaje, "%")),
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = "Distribución por género") +
+    theme_void() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold"),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 10),
+      panel.border = element_rect(color = "#8A8A8A", fill = NA, linewidth = 0.5)
+    ) +
+    scale_fill_manual(values = c("#006FB3", "#FE6565")) +
+    guides(fill = guide_legend(
+      keywidth = unit(0.3, "cm"),
+      keyheight = unit(0.3, "cm")
+    ))
+}
+```
+
+# II. MATRÍCULA POR ESPECIALIDAD (datos 2025)
+
+```{r especialidades, echo=FALSE}
+esp <- df %>%
+  filter(!is.na(nom_espe)) %>%
+  group_by(nom_espe) %>%
+  summarise(
+    RBD_imparten = n_distinct(rbd),
+    Total = n(),
+    Hombres = sum(gen_alu == 1, na.rm = TRUE),
+    Mujeres = sum(gen_alu == 2, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    `% Hombres` = round(100 * Hombres / Total, 1),
+    `% Mujeres` = round(100 * Mujeres / Total, 1)
+  ) %>%
+  rename(`Especialidad` = nom_espe)
+
+if (nrow(esp) > 0) {
+  if (knitr::is_latex_output()) {
+    # En PDF: usar kableExtra centrada y con scale_down para ajustar a ancho de página
+    tabla_centrada(esp, caption = NULL)
+  } else {
+    suppressWarnings(
+      flextable(esp) %>% 
+        colformat_num(
+          j = c("RBD_imparten", "Total", "Hombres", "Mujeres"),
+          big.mark = ".",   
+          decimal.mark = ",",
+          digits = 0
+        ) %>%
+        colformat_num(
+          j = c("% Hombres", "% Mujeres"),
+          big.mark = ".", 
+          decimal.mark = ",",
+          digits = 1, 
+          suffix = "%"
+        ) %>%
+        align(align = "center", part = "all") %>%
+        autofit()
+    )
+  }
+} else {
+  cat("No hay datos de especialidades disponibles.\n")
+}
+```
+
+
+# III. OTROS DATOS DE MATRÍCULA
+
+## A. ETNIAS
+
+```{r etnias, echo=FALSE}
+total_m <- nrow(df)
+
+etnias <- df %>%
+  filter(!is.na(cod_etnia_alu)) %>%
+  count(cod_etnia_alu, name = "Total") %>%
+  mutate(Porcentaje = round(100 * Total / total_m, 1))
+
+if (nrow(etnias) > 0) {
+  tabla_centrada(etnias)
+} else {
+  cat("No hay datos de etnias disponibles.\n")
+}
+```
+
+
+## B. ESTUDIANTES EXTRANJEROS
+
+```{r extranjeros, echo=FALSE}
+extr <- df %>%
+  mutate(tipo = case_when(
+    cod_nac_alu == "E" ~ "Extranjero",
+    cod_nac_alu == "N" ~ "Nacionalizado",
+    cod_nac_alu == "C" ~ "Chileno",
+    TRUE ~ "Desconocido"
+  )) %>%
+  count(tipo, name = "Total") %>%
+  mutate(Porcentaje = round(100 * Total / sum(Total), 1))
+
+tabla_centrada(extr)
+```
+
+## C. ORIGEN DE ESTUDIANTES EXTRANJEROS
+
+```{r origen_extranjeros, echo=FALSE}
+extr_origen <- df %>%
+  filter(cod_nac_alu == "E") %>%
+  mutate(pais = ifelse(pais_origen_alu == "Chile" | is.na(pais_origen_alu), "Desconocido", pais_origen_alu)) %>%
+  count(pais, name = "Total") %>%
+  mutate(Porcentaje = round(100 * Total / sum(Total), 1)) %>%
+  arrange(desc(Total))
+
+if (nrow(extr_origen) > 0) {
+  tabla_centrada(extr_origen)
+} else {
+  cat("No hay estudiantes extranjeros registrados.\n")
+}
+```
+> ~**Nota:** En algunos casos, los establecimientos han declarado a “Chile” el país de origen de estudiantes informados como extranjeros. Esto puede deberse a errores de registro en la base de datos del establecimiento. Para efectos de este reporte, esos casos se han clasificado como “Desconocido”.~
+
+
+# IV. TASA DE TITULACIÓN AL AÑO DE EGRESO
+```{r tasa_titulacion_2024, echo=FALSE, message=FALSE, warning=FALSE}
+# Partimos de la base original
+df_tasa <- params$base_apoyo
+
+if (!is.null(params$especialidad_filtrada) && params$especialidad_filtrada != "Todas") {
+  df_tasa <- df_tasa %>% filter(nom_espe == params$especialidad_filtrada)
+}
+
+# Calculamos totales del territorio
+totales_tasa <- df_tasa %>%
+  summarise(
+    total_egresados = sum(egre_2023, na.rm = TRUE),
+    total_titulados = sum(titu_2024_egre_2023, na.rm = TRUE)
+  ) %>%
+  mutate(
+    tasa_titulacion = ifelse(total_egresados > 0,
+                              pmin(total_titulados / total_egresados, 1),
+                              NA_real_)
+  ) %>%
+  # Convertimos a porcentaje con 1 decimal
+  mutate(tasa_titulacion_pct = round(100 * tasa_titulacion, 1))
+
+# Mensaje explicativo
+cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2024 de estudiantes egresados en 2023 dividido por el total de egresados 2023. Se trunca al 100% si corresponde.\n\n")
+
+# Mostramos la tabla con flextable
+totales_tasa %>%
+  select(total_egresados, total_titulados, tasa_titulacion_pct) %>%
+  rename(
+    `Total Egresados 2023` = total_egresados,
+    `Total Titulados 2024` = total_titulados,
+    `Tasa de Titulación (%)` = tasa_titulacion_pct
+  ) %>%
+  tabla_centrada()
+```
+> ~**Nota:** Cuando se filtra por especialidad, la tasa de titulación corresponde al total de titulados de los establecimientos que la imparten, ya que, por el momento, no se dispone de información de titulación desagregada por especialidad. Por lo tanto, el valor reflejado NO corresponde exclusivamente a la especialidad seleccionada.~
+
+# V. DATOS DE DOCENTES EMTP 2025
+```{r docentes_territorio, echo=FALSE}
+# Verificamos que lleguen datos
+docentes <- params$docentes_emtp
+
+if (!is.null(docentes) && nrow(docentes) > 0) {
+  
+  # Tabla de códigos y nombres (para mapear códigos a nombres de especialidad)
+  codigos_especialidades <- tibble::tibble(
+    Especialidad = c(
+      "41001","41002","41003","41004",
+      "51001","51002","51003","51004","51005","51006",
+      "52008","52009","52010","52011","52012",
+      "53014","53015","53016",
+      "54018","54019","54020",
+      "55022","55023",
+      "56025","56026",
+      "57028","57029","57030","57031",
+      "58033","58034","58035",
+      "61001","61002",
+      "62004","62005","62006","62007",
+      "63009","63010",
+      "71001","71002","71003","71004",
+      "72006",
+      "81001","81002","81003","81004",
+      "Formación General"
+    ),
+    Nombre = c(
+      "Administración","Contabilidad","Secretariado","Ventas",
+      "Edificación","Terminaciones de Construcción","Montaje Industrial","Obras Viales y de Infraestructura","Instalaciones sanitarias","Refrigeración y climatización",
+      "Mecánica industrial","Construcciones metálicas","Mecánica","Matricería","Mecánica de mantención de aeronaves",
+  "Electricidad","Electrónica","Telecomunicaciones",
+      "Explotación minera","Metalurgia extractiva","Asistencia en geología",
+      "Gráfica","Dibujo técnico",
+      "Operación de planta química","Laboratorio químico",
+      "Tejido","Textil","Vestuario y confección textil","Productos del cuero",
+      "Conectividad y Redes","Programación","Telecomunicaciones",
+      "Elaboración industrial de alimentos","Servicio de alimentación colectiva",
+      "Atención de párvulos","Atención de adultos mayores","Atención de enfermos","Atención social y recreativa",
+      "Servicio de Turismo","Servicio de Hotelería",
+      "Forestal","Procesamiento de la madera","Productos de la madera","Celulosa y papel",
+      "Agropecuaria",
+      "Naves mercantes y especiales","Pesquería","Acuicultura","Operación portuaria",
+      "Formación General"
+    )
+  )
+  
+  # Mapear códigos a nombres
+  resumen_docentes <- docentes %>%
+    left_join(codigos_especialidades, by = "Especialidad") %>%
+    mutate(Nombre = ifelse(is.na(Nombre), Especialidad, Nombre)) %>%
+    group_by(Nombre) %>%
+    summarise(
+      Total = n(),
+      Hombres = sum(DOC_GENERO == 1, na.rm = TRUE),
+      Mujeres = sum(DOC_GENERO == 2, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      `% Hombres` = round(100 * Hombres / Total, 1),
+      `% Mujeres` = round(100 * Mujeres / Total, 1)
+    ) %>%
+    arrange(desc(Nombre == "Formación General"), Nombre)
+  
+  # Agregar totales al final
+  totales <- tibble::tibble(
+    Nombre = c("Total sin FG", "Total incluyendo FG"),
+    Total = c(sum(resumen_docentes$Total[resumen_docentes$Nombre != "Formación General"]),
+              sum(resumen_docentes$Total)),
+    Hombres = c(sum(resumen_docentes$Hombres[resumen_docentes$Nombre != "Formación General"]),
+                sum(resumen_docentes$Hombres)),
+    Mujeres = c(sum(resumen_docentes$Mujeres[resumen_docentes$Nombre != "Formación General"]),
+                sum(resumen_docentes$Mujeres)),
+    `% Hombres` = round(100 * c(sum(resumen_docentes$Hombres[resumen_docentes$Nombre != "Formación General"]),
+                               sum(resumen_docentes$Hombres)) /
+                        c(sum(resumen_docentes$Total[resumen_docentes$Nombre != "Formación General"]),
+                          sum(resumen_docentes$Total)), 1),
+    `% Mujeres` = round(100 * c(sum(resumen_docentes$Mujeres[resumen_docentes$Nombre != "Formación General"]),
+                               sum(resumen_docentes$Mujeres)) /
+                        c(sum(resumen_docentes$Total[resumen_docentes$Nombre != "Formación General"]),
+                          sum(resumen_docentes$Total)), 1)
+  )
+  
+  resumen_docentes <- bind_rows(resumen_docentes, totales)
+  
+  # Flextable con totales en negrita
+  filas_totales <- which(resumen_docentes$Nombre %in% c("Total sin FG", "Total incluyendo FG"))
+  
+  if (knitr::is_latex_output()) {
+    # En PDF: centrar/ajustar y poner totales en negrita
+    k <- tabla_centrada(resumen_docentes, caption = "Docentes según especialidad y sexo en el territorio")
+    kableExtra::row_spec(k, filas_totales, bold = TRUE)
+  } else {
+    flextable(resumen_docentes) %>%
+      set_caption("Docentes según especialidad y sexo en el territorio") %>%
+      bold(i = filas_totales, bold = TRUE) %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  }
+  
+} else {
+  cat("No se dispone de información sobre docentes EMTP para este territorio.\n")
+}
+```
+> ~**Nota:** Se considera “Formación General” a aquellos docentes declarados como responsables de asignaturas de formación general en un curso de especialidad EMTP.
+
+
+# VI. DATOS DE DEPENDENCIA (DISTRIBUCIÓN DE MATRÍCULA)
+```{r establecimientos, results='asis', echo=FALSE}
+if (!is.null(df) && nrow(df) > 0) {
+  total_rbd_distintos <- df %>%
+    summarise(n_establecimientos = n_distinct(rbd)) %>%
+    pull()
+  
+  cat(paste0("### Cantidad de establecimientos en el territorio: **", total_rbd_distintos, "**\n\n"))
+}
+```
+
+```{r dependencia, echo=FALSE}
+# Calcular RBD distintos del territorio por Dependencia
+rbd_por_depe <- df %>%
+  mutate(
+    # Convertir cod_depe2 a character para comparación
+    cod_depe2_char = as.character(cod_depe2),
+    Dependencia = case_when(
+      cod_depe2_char == "1" | toupper(cod_depe2) == "MUNICIPAL" ~ "Municipal",
+      cod_depe2_char == "2" | toupper(cod_depe2) == "PARTICULAR SUBVENCIONADO" ~ "Part. Subv.",
+      cod_depe2_char == "4" | toupper(cod_depe2) == "ADMINISTRACIÓN DELEGADA" ~ "Adm. Delegada",
+      cod_depe2_char == "5" | toupper(cod_depe2) == "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA" ~ "SLEP",
+      TRUE ~ "Otra"
+    )
+  ) %>%
+  group_by(Dependencia) %>%
+  summarise(RBD_distintos = n_distinct(rbd), .groups = "drop")
+
+# Tabla de dependencia con conteo de estudiantes
+tabla_dep <- df %>%
+  mutate(
+    # Convertir cod_depe2 a character para comparación
+    cod_depe2_char = as.character(cod_depe2),
+    Dependencia = case_when(
+      cod_depe2_char == "1" | toupper(cod_depe2) == "MUNICIPAL" ~ "Municipal",
+      cod_depe2_char == "2" | toupper(cod_depe2) == "PARTICULAR SUBVENCIONADO" ~ "Part. Subv.",
+      cod_depe2_char == "4" | toupper(cod_depe2) == "ADMINISTRACIÓN DELEGADA" ~ "Adm. Delegada",
+      cod_depe2_char == "5" | toupper(cod_depe2) == "SERVICIO LOCAL DE EDUCACIÓN PÚBLICA" ~ "SLEP",
+      TRUE ~ "Otra"
+    )
+  ) %>%
+  count(Dependencia) %>%
+  rename(Total = n) %>%
+  left_join(rbd_por_depe, by = "Dependencia") %>%
+  mutate(porcentaje = round(100 * Total / sum(Total), 1))
+
+# Agrega fila total
+fila_total <- tibble(
+  Dependencia = "Total",
+  Total = sum(tabla_dep$Total),
+  RBD_distintos = n_distinct(df$rbd),
+  porcentaje = 100
+)
+
+tabla_dep <- bind_rows(tabla_dep, fila_total)
+
+# Mostrar tabla centrada (PDF con kableExtra, Word con flextable)
+if (knitr::is_latex_output()) {
+  tabla_centrada(
+    dplyr::rename(tabla_dep, `% del total` = porcentaje, `RBD distintos` = RBD_distintos)
+  )
+} else {
+  flextable(tabla_dep) %>%
+    colformat_num(
+      j = c("porcentaje"), digits = 1,
+      big.mark = ".", decimal.mark = ","
+    ) %>%
+    set_header_labels(
+      porcentaje = "% del total",
+      RBD_distintos = "RBD distintos"
+    ) %>%
+    bold(i = nrow(tabla_dep), bold = TRUE) %>%
+    align(align = "center", part = "all") %>%
+    autofit()
+}
+```
+
+```{r grafico_dependencia, fig.align='center', dpi=280, echo=FALSE}
+# Gráfico de torta - Dependencia
+tabla_dep_sin_total <- tabla_dep %>% filter(Dependencia != "Total")
+
+if (nrow(tabla_dep_sin_total) > 0) {
+  ggplot(tabla_dep_sin_total, aes(x = "", y = porcentaje, fill = Dependencia)) +
+    geom_col(width = 1, color = "white") +
+    coord_polar(theta = "y") +
+    geom_text(aes(label = paste0(porcentaje, "%")),
+              position = position_stack(vjust = 0.5),
+              size = 3) +  # tamaño similar a SIMCE
+    labs(title = "Distribución por dependencia") +
+    theme_void() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold"), # igual que SIMCE
+      legend.title = element_blank(),
+      legend.text = element_text(size = 10),               # igual que SIMCE
+      panel.border = element_rect(color = "#8A8A8A", fill = NA, linewidth = 0.5)
+    ) +
+    scale_fill_manual(values = c("#FFA11B", "#6633CC", "#E0701E", "#2D717C")) +
+    guides(fill = guide_legend(
+      keywidth = unit(0.3, "cm"),
+      keyheight = unit(0.3, "cm")
+    ))
+}
+```
+
+# VII. ACCESO A RECURSOS
+
+```{r concursos, echo=FALSE}
+if (!is.null(params$base_apoyo) && nrow(params$base_apoyo) > 0) {
+  
+  base <- params$base_apoyo
+  
+  limpiar_monto <- function(x) {
+    as.numeric(str_remove_all(x, "[$\\.]"))
+  }
+  
+  anos_regular <- c("EquipamientoRegular_2020", "EquipamientoRegular_2021",
+                    "EquipamientoRegular_2022", "EquipamientoRegular_2023", "EquipamientoRegular_2024")
+  anos_slep <- c("EquipamientoSLEP_2023", "EquipamientoSLEP_2024")
+  
+  suma_por_anio <- function(df, vars) {
+    df %>%
+      select(any_of(vars)) %>%
+      mutate(across(everything(), limpiar_monto)) %>%
+      summarise(across(everything(), ~ sum(.x, na.rm = TRUE)))
+  }
+  
+  regular_sum <- suma_por_anio(base, anos_regular) %>%
+    mutate(Total = rowSums(across(everything())))
+  
+  slep_sum <- suma_por_anio(base, anos_slep) %>%
+    mutate(Total = rowSums(across(everything()))) %>%
+    mutate(
+      EquipamientoSLEP_2020 = 0,
+      EquipamientoSLEP_2021 = 0,
+      EquipamientoSLEP_2022 = 0
+    ) %>%
+    select(EquipamientoSLEP_2020, EquipamientoSLEP_2021, EquipamientoSLEP_2022, everything())
+  
+  colnames(regular_sum) <- c("2020", "2021", "2022", "2023", "2024", "Total")
+  colnames(slep_sum)    <- c("2020", "2021", "2022", "2023", "2024", "Total")
+  
+  resumen_tabla <- bind_rows(
+    `Equipamiento Regular` = regular_sum,
+    `Equipamiento SLEP` = slep_sum,
+    .id = "Tipo de Recursos Asignados"
+  )
+  
+  # Agregar fila de totales
+  fila_total <- resumen_tabla %>%
+    select(-`Tipo de Recursos Asignados`) %>%
+    summarise(across(everything(), ~ sum(.x, na.rm = TRUE))) %>%
+    mutate(`Tipo de Recursos Asignados` = "TOTAL") %>%
+    relocate(`Tipo de Recursos Asignados`, .before = everything())
+  
+  resumen_tabla <- bind_rows(resumen_tabla, fila_total)
+  
+  resumen_tabla_fmt <- resumen_tabla %>%
+    mutate(across(-`Tipo de Recursos Asignados`, ~ scales::comma(.x, big.mark = ".", decimal.mark = ",")))
+
+  if (knitr::is_latex_output()) {
+    # Mostrar con kableExtra centrada/ajustada
+    tabla_centrada(resumen_tabla_fmt, caption = "Resumen de recursos asignados (en pesos chilenos)")
+  } else {
+    flextable(resumen_tabla_fmt) %>%
+      bold(i = nrow(resumen_tabla_fmt), bold = TRUE) %>%  # Fila total en negrita
+      align(align = "center", part = "all") %>%
+      set_caption("Resumen de recursos asignados (en pesos chilenos)") %>%
+      autofit()
+  }
+  
+} else {
+  cat("No hay información disponible sobre concursos en este territorio.\n")
+}
+```
+> ~**Nota:** Equipamiento SLEP se calculó en base a presupuestos, considerando las modificaciones presupuestarias.~
+
+# VIII. ASISTENCIA ANUAL POR TERRITORIO (CATEGORÍA)
+```{r asistencia_promedio, echo=FALSE, results='asis'}
+.tap <- suppressWarnings(as.numeric(params$territorio_filtrado$tasa_asis_anual))
+if (any(is.finite(.tap)))
+  cat(sprintf("**Asistencia promedio del territorio: %s%%**\n\n",
+              gsub("\\.", ",", sprintf("%.1f", mean(.tap, na.rm = TRUE)))))
+```
+```{r asistencia_anual, echo=FALSE}
+
+datos <- params$territorio_filtrado
+
+# Crear categorías y factor con orden
+datos_asistencia <- datos %>%
+  mutate(
+    Categoria = case_when(
+      categoria_asis_anual == 1 ~ "Inasistencia crítica (<50%)",
+      categoria_asis_anual == 2 ~ "Inasistencia grave (50%-84%)",
+      categoria_asis_anual == 3 ~ "Inasistencia reiterada (85%-89%)",
+      categoria_asis_anual == 4 ~ "Asistencia esperada (>=90%)",
+      TRUE ~ NA_character_
+    ),
+    Categoria = factor(Categoria,
+                       levels = c(
+                         "Inasistencia crítica (<50%)",
+                         "Inasistencia grave (50%-84%)",
+                         "Inasistencia reiterada (85%-89%)",
+                         "Asistencia esperada (>=90%)"
+                       )),
+    Genero = case_when(
+      gen_alu == 1 ~ "Hombres",
+      gen_alu == 2 ~ "Mujeres",
+      TRUE ~ "Desconocido"
+    )
+  ) %>%
+  filter(!is.na(Categoria)) %>%
+  group_by(Categoria, Genero) %>%
+  summarise(Estudiantes = n(), .groups = "drop") %>%
+  tidyr::complete(
+    Categoria,
+    Genero = c("Hombres", "Mujeres"),
+    fill = list(Estudiantes = 0)
+  ) %>%
+  tidyr::pivot_wider(
+    names_from = Genero,
+    values_from = Estudiantes
+  ) %>%
+  mutate(
+    Total = Hombres + Mujeres,
+    `% Hombres` = round(100 * Hombres / Total, 1),
+    `% Mujeres` = round(100 * Mujeres / Total, 1)
+  ) %>%
+  ungroup() %>%
+  mutate(
+    `% del Total` = round(100 * Total / sum(Total), 1)
+  )
+
+# Generar tabla
+if (knitr::is_latex_output()) {
+  tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual y género")
+} else {
+  suppressWarnings(
+    flextable(datos_asistencia) %>%
+      set_caption("Distribución de estudiantes según categoría de asistencia anual y género") %>%
+      colformat_num(
+        j = c("Hombres", "Mujeres", "Total"), 
+        big.mark = ".", 
+        decimal.mark = ",", 
+        digits = 0
+      ) %>%
+      colformat_num(
+        j = c("% Hombres", "% Mujeres", "% del Total"), 
+        big.mark = ".", 
+        decimal.mark = ",",
+        digits = 1, 
+        suffix = "%"
+      ) %>%
+      align(align = "center", part = "all") %>%
+      autofit()
+  )
+}
+```
+
+```{r grafico_asistencia, dpi=280, fig.align='center', echo=FALSE}
+# Preparar datos para el gráfico (solo total por categoría)
+datos_grafico <- datos %>%
+  mutate(
+    Categoria = case_when(
+      categoria_asis_anual == 1 ~ "Inasistencia crítica (<50%)",
+      categoria_asis_anual == 2 ~ "Inasistencia grave (50%-84%)",
+      categoria_asis_anual == 3 ~ "Inasistencia reiterada (85%-89%)",
+      categoria_asis_anual == 4 ~ "Asistencia esperada (>=90%)",
+      TRUE ~ NA_character_
+    ),
+    Categoria = factor(Categoria,
+                       levels = c(
+                         "Inasistencia crítica (<50%)",
+                         "Inasistencia grave (50%-84%)",
+                         "Inasistencia reiterada (85%-89%)",
+                         "Asistencia esperada (>=90%)"
+                       ))
+  ) %>%
+  filter(!is.na(Categoria)) %>%
+  group_by(Categoria) %>%
+  summarise(Total = n(), .groups = "drop") %>%
+  mutate(Porcentaje = round(100 * Total / sum(Total), 1))
+
+# Gráfico de barras
+ggplot(datos_grafico, aes(x = Categoria, y = Porcentaje, fill = Categoria)) +
+  geom_col(color = "white") +
+  geom_text(aes(label = paste0(Porcentaje, "%")), vjust = -0.3, size = 3) +
+  scale_fill_manual(values = c(
+    "Inasistencia crítica (<50%)" = "#FE6565",
+    "Inasistencia grave (50%-84%)" = "#F7A35C",
+    "Inasistencia reiterada (85%-89%)" = "#A8B7C7",
+    "Asistencia esperada (>=90%)" = "#006FB3"
+  )) +
+  labs(
+    title = "Distribución de asistencia anual por categoría",
+    x = "Categoría de asistencia",
+    y = "Porcentaje de estudiantes"
+  ) +
+  theme_minimal(base_size = 10) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 20, hjust = 1)
+  )
+```
+
+# IX. RESULTADOS SIMCE DEL TERRITORIO - II° MEDIO
+
+```{r simce_territorio, echo=FALSE, results='asis'}
+if (!is.null(params$base_apoyo) && nrow(params$base_apoyo) > 0) {
+  df <- params$base_apoyo
+  
+  if ("prom_lect2m_rbd" %in% names(df)) {
+    
+    simce_resumen <- df %>%
+      summarise(
+        `Promedio Lectura` = round(mean(as.numeric(prom_lect2m_rbd), na.rm = TRUE), 1),
+        `Promedio Matemática` = round(mean(as.numeric(prom_mate2m_rbd), na.rm = TRUE), 1),
+        `Dif. Lectura*` = round(mean(as.numeric(dif_lect2m_rbd), na.rm = TRUE), 1),
+        `Dif. Matemática*` = round(mean(as.numeric(dif_mate2m_rbd), na.rm = TRUE), 1),
+        
+        # Cálculo territorial ponderado
+        `% Insuficiente Lectura` = round(sum(n_palu_eda_ins_lect2m_rbd, na.rm = TRUE) /
+                                         sum(n_palu_eda_ins_lect2m_rbd + n_palu_eda_ele_lect2m_rbd + n_palu_eda_ade_lect2m_rbd, na.rm = TRUE) * 100, 1),
+        `% Elemental Lectura` = round(sum(n_palu_eda_ele_lect2m_rbd, na.rm = TRUE) /
+                                       sum(n_palu_eda_ins_lect2m_rbd + n_palu_eda_ele_lect2m_rbd + n_palu_eda_ade_lect2m_rbd, na.rm = TRUE) * 100, 1),
+        `% Adecuado Lectura` = round(sum(n_palu_eda_ade_lect2m_rbd, na.rm = TRUE) /
+                                      sum(n_palu_eda_ins_lect2m_rbd + n_palu_eda_ele_lect2m_rbd + n_palu_eda_ade_lect2m_rbd, na.rm = TRUE) * 100, 1),
+        
+        `% Insuficiente Matemática` = round(sum(n_palu_eda_ins_mate2m_rbd, na.rm = TRUE) /
+                                            sum(n_palu_eda_ins_mate2m_rbd + n_palu_eda_ele_mate2m_rbd + n_palu_eda_ade_mate2m_rbd, na.rm = TRUE) * 100, 1),
+        `% Elemental Matemática` = round(sum(n_palu_eda_ele_mate2m_rbd, na.rm = TRUE) /
+                                          sum(n_palu_eda_ins_mate2m_rbd + n_palu_eda_ele_mate2m_rbd + n_palu_eda_ade_mate2m_rbd, na.rm = TRUE) * 100, 1),
+        `% Adecuado Matemática` = round(sum(n_palu_eda_ade_mate2m_rbd, na.rm = TRUE) /
+                                         sum(n_palu_eda_ins_mate2m_rbd + n_palu_eda_ele_mate2m_rbd + n_palu_eda_ade_mate2m_rbd, na.rm = TRUE) * 100, 1)
+      )
+
+    if (knitr::is_latex_output()) {
+      # Pivotar a formato largo para que quepa en PDF (10 columnas no caben en hoja A4)
+      simce_largo <- tibble::tibble(
+        Indicador = c(
+          "Promedio Lectura", "Promedio Matem\u00e1tica",
+          "Dif. Lectura*", "Dif. Matem\u00e1tica*",
+          "% Insuficiente Lectura", "% Elemental Lectura", "% Adecuado Lectura",
+          "% Insuficiente Matem\u00e1tica", "% Elemental Matem\u00e1tica", "% Adecuado Matem\u00e1tica"
+        ),
+        Valor = c(
+          simce_resumen[["Promedio Lectura"]], simce_resumen[["Promedio Matem\u00e1tica"]],
+          simce_resumen[["Dif. Lectura*"]], simce_resumen[["Dif. Matem\u00e1tica*"]],
+          simce_resumen[["% Insuficiente Lectura"]], simce_resumen[["% Elemental Lectura"]], simce_resumen[["% Adecuado Lectura"]],
+          simce_resumen[["% Insuficiente Matem\u00e1tica"]], simce_resumen[["% Elemental Matem\u00e1tica"]], simce_resumen[["% Adecuado Matem\u00e1tica"]]
+        )
+      )
+      tabla_centrada(simce_largo, caption = "Resumen territorial SIMCE")
+    } else {
+      flextable(simce_resumen) %>%
+        colformat_num(digits = 1, suffix = "%", 
+                      j = c("% Insuficiente Lectura", "% Elemental Lectura", "% Adecuado Lectura", 
+                            "% Insuficiente Matemática", "% Elemental Matemática", "% Adecuado Matemática")) %>%
+        align(align = "center", part = "all") %>%
+        set_caption("Resumen territorial SIMCE") %>%
+        autofit()
+    }
+    
+  } else {
+    cat("No hay información SIMCE disponible en este territorio.\n")
+  }
+}
+```
+> ~**Nota:** *Diferencia (-/+) con respecto a la evaluación anterior.~
+
+```{r grafico_simce, dpi=280, fig.align='center', echo=FALSE}
+# Gráfico SIMCE II° Medio - Barras 100% apiladas (con porcentajes ponderados)
+if (exists("simce_resumen") && nrow(simce_resumen) > 0) {
+  
+  simce_long <- simce_resumen %>%
+    select(`% Insuficiente Lectura`, `% Elemental Lectura`, `% Adecuado Lectura`,
+           `% Insuficiente Matemática`, `% Elemental Matemática`, `% Adecuado Matemática`) %>%
+    pivot_longer(cols = everything(), names_to = "Indicador", values_to = "Porcentaje") %>%
+    mutate(
+      Asignatura = ifelse(grepl("Lectura", Indicador), "Lectura", "Matemática"),
+      Nivel = case_when(
+        grepl("Insuficiente", Indicador) ~ "Insuficiente",
+        grepl("Elemental", Indicador) ~ "Elemental",
+        grepl("Adecuado", Indicador) ~ "Adecuado"
+      ),
+      Porcentaje = round(Porcentaje, 1)
+    )
+  
+  ggplot(simce_long, aes(x = Asignatura, y = Porcentaje, fill = Nivel)) +
+    geom_col(position = "fill", color = "white") +
+    geom_text(aes(label = paste0(Porcentaje, "%")),
+              position = position_fill(vjust = 0.5), size = 3) +
+    scale_fill_manual(values = c("Insuficiente" = "#FE6565", 
+                                 "Elemental" = "#A8B7C7", 
+                                 "Adecuado" = "#006FB3")) +
+    scale_y_continuous(labels = scales::percent) +
+    labs(title = "Distribución SIMCE territorial (II° Medio)",
+         x = "Asignatura", y = "Porcentaje") +
+    theme(
+      legend.title = element_blank(),
+      panel.border = element_rect(color = "#8A8A8A", fill = NA, linewidth = 0.5),
+      plot.title = element_text(face = "bold")
+    )
+}
+```
+
+# X. IDPS (Indicadores de Desarrollo Personal y Social) - II° MEDIO
+
+```{r idps_territorio, echo=FALSE, results='asis'}
+.idps_ok <- FALSE
+if (!is.null(params$base_apoyo) && nrow(params$base_apoyo) > 0) {
+  df <- params$base_apoyo
+  cols_p <- c("IDPS1_Puntaje","IDPS2_Puntaje","IDPS3_Puntaje","IDPS4_Puntaje")
+  if (all(cols_p %in% names(df))) {
+    p <- sapply(cols_p, function(c) round(mean(suppressWarnings(as.numeric(df[[c]])), na.rm = TRUE)))
+    n_ee <- sum(!is.na(suppressWarnings(as.numeric(df$IDPS1_Puntaje))))
+    if (any(!is.na(p)) && n_ee > 0) {
+      .idps_ok <- TRUE
+      idps_terr <- tibble::tibble(
+        Indicador = c("Autoestima Académica y Motivación Escolar", "Clima de Convivencia Escolar",
+                      "Participación y Formación Ciudadana", "Hábitos de Vida Saludable"),
+        `Puntaje promedio (0-100)` = as.integer(p),
+        Nivel = ifelse(is.na(p), "s/i", ifelse(p < 60, "Bajo", ifelse(p < 75, "Medio", "Alto")))
+      )
+      cat(sprintf("Promedio territorial de %d establecimientos con IDPS. Escala 0-100: **Bajo** (<60), **Medio** (60-74), **Alto** (>=75).\n\n", n_ee))
+      tabla_centrada(idps_terr, caption = "IDPS por indicador - promedio del territorio (II° Medio)")
+    }
+  }
+}
+if (!.idps_ok) cat("_No hay información IDPS disponible para los establecimientos de este territorio._\n\n")
+```
+
+# ANEXOS
+
+```{r anexo_rbd_nombre, echo=FALSE, results='asis'}
+if (!is.null(params$incluir_tabla) && params$incluir_tabla) {
+  if (!is.null(params$base_apoyo) && nrow(params$base_apoyo) > 0) {
+    rbd_lista <- params$base_apoyo %>%
+      select(rbd, Nombre) %>%
+      distinct() %>%
+      arrange(rbd)
+    
+    cat("## Lista de establecimientos (RBD y Nombre) del territorio seleccionado\n\n")
+    cat(paste0("Se incluyen **", nrow(rbd_lista), "** establecimientos distintos.\n\n"))
+    
+    if (knitr::is_latex_output()) {
+      tabla_centrada(rbd_lista, caption = NULL)
+    } else {
+      flextable(rbd_lista) %>% align(align = "center", part = "all") %>% autofit()
+    }
+  } else {
+    cat("No hay datos disponibles para mostrar la lista de establecimientos.\n")
+  }
+} else {
+  cat("**El anexo de establecimientos fue omitido por selección del usuario.**\n")
+}
+```
+

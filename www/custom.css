@@ -1,0 +1,972 @@
+/* =============================
+   Paleta institucional EMTP (única fuente de verdad)
+   ============================= */
+:root {
+  --color-primary: #34536A;      /* Azul petróleo */
+  --color-secondary: #B35A5A;    /* Rojo ladrillo */
+  --color-tertiary: #232A36;     /* Texto principal oscuro */
+  --color-accent: #C0C8D2;       /* Acento claro / fondos suaves */
+  --color-neutral: #F4F6F8;      /* Fondo base claro */
+  --color-gray-a: #4A4A4A;       /* Texto secundario */
+  --color-gray-b: #8A8A8A;       /* Texto terciario */
+  --color-white: #FFFFFF;
+  --color-black: #181818;
+  --color-success: #3C7F6D;      /* Verde institucional opcional */
+  --color-warning: #C27D2A;      /* Naranja moderado */
+  --color-danger: #963A3A;       /* Rojo oscuro (derivado de secondary) */
+  --focus-ring: #FFB347;         /* Resalte de foco accesible */
+}
+
+/* Modo Alto Contraste */
+body.high-contrast {
+  --color-primary: #102535;
+  --color-secondary: #7E1010;
+  --color-tertiary: #000000;
+  --color-accent: #E2E6EA;
+  --color-neutral: #FFFFFF;
+  --color-gray-a: #111111;
+  --color-gray-b: #333333;
+  --focus-ring: #FFCC00;
+}
+
+/* Preferencias forced-colors (cuando aplica) */
+@media (forced-colors: active) {
+  body { forced-color-adjust: none; }
+}
+
+body, .container-fluid, .fluidPage {
+  background: var(--color-neutral) !important;
+  color: var(--color-tertiary) !important;
+  font-family: 'Roboto', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+/* Panel genérico */
+.panel-custom {
+  background: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(52,83,106,0.08);
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--color-primary);
+}
+
+/* Tarjetas métricas base (color se sobreescribe por clases de gradiente) */
+.metric-card {
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(52,83,106,0.10);
+  transition: transform .2s ease, box-shadow .2s ease;
+  background: var(--color-accent);
+  color: var(--color-tertiary);
+}
+.metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(52,83,106,0.18); }
+.metric-card h5 { margin:0; font-size:16px; font-weight:600; }
+.metric-card h2 { margin:10px 0; font-weight:700; }
+
+/* Gradientes métricas semánticas */
+.metric-gradient-total { background: linear-gradient(135deg, var(--color-primary), var(--color-tertiary)); color: var(--color-white); }
+.metric-gradient-hombres { background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); color: var(--color-white); }
+.metric-gradient-mujeres { background: linear-gradient(135deg, var(--color-secondary), var(--color-primary)); color: var(--color-white); }
+.metric-gradient-est { background: linear-gradient(135deg, var(--color-tertiary), var(--color-secondary)); color: var(--color-white); }
+
+/* Separadores (jóvenes / adultos) usando variables */
+.separador-jovenes { background: var(--color-primary); color: var(--color-white); padding:10px 15px; margin:10px 0; border-radius:6px; font-weight:bold; text-align:center; font-size:14px; }
+.separador-adultos { background: var(--color-secondary); color: var(--color-white); padding:10px 15px; margin:10px 0; border-radius:6px; font-weight:bold; text-align:center; font-size:14px; }
+
+/* Utilidades de borde izquierdo */
+.border-left-primary { border-left:4px solid var(--color-primary) !important; }
+.border-left-secondary { border-left:4px solid var(--color-secondary) !important; }
+.border-left-success { border-left:4px solid var(--color-success) !important; }
+.border-left-danger { border-left:4px solid var(--color-danger) !important; }
+
+/* Utilidades de texto */
+.text-primary { color: var(--color-primary) !important; }
+.text-secondary { color: var(--color-secondary) !important; }
+.text-tertiary { color: var(--color-tertiary) !important; }
+.text-gray { color: var(--color-gray-a) !important; }
+.text-muted { color: var(--color-gray-b) !important; }
+
+/* Panel descarga / update */
+.download-panel, .update-box {
+  background: var(--color-accent);
+  padding: 15px 20px;
+  border-radius: 8px;
+  border-left: 4px solid var(--color-primary);
+  margin-bottom: 20px;
+  transition: box-shadow .25s ease, transform .25s ease;
+}
+.download-panel:hover, .update-box:hover { box-shadow:0 4px 12px rgba(52,83,106,0.20); transform: translateY(-2px); }
+
+/* Alertas (info genérica remodelada) */
+.alert-info { background:#E2E8EC; border:1px solid var(--color-primary); border-radius:6px; padding:15px; color: var(--color-tertiary); }
+
+/* Selectize y formulario */
+.form-group { margin-bottom:15px; }
+.selectize-input { border-radius:4px; border:1px solid #ced4da; }
+.selectize-input:focus { border-color: var(--color-primary); box-shadow:0 0 0 0.18rem rgba(52,83,106,0.35); }
+
+/* Botones (override final) */
+.btn-primary { background: var(--color-primary) !important; border:none; color: var(--color-white) !important; border-radius:6px; }
+.btn-primary:hover { background: var(--color-secondary) !important; }
+.btn-success { background: var(--color-secondary) !important; border:none; color: var(--color-white) !important; border-radius:6px; }
+.btn-success:hover { background: var(--color-primary) !important; }
+.btn-warning { background: var(--color-warning) !important; border:none; color: var(--color-white) !important; }
+.btn-warning:hover { filter: brightness(0.9); }
+
+/* Navbar y tabs */
+.navbar.navbar-default { background: var(--color-primary) !important; border:none !important; box-shadow:0 2px 6px rgba(0,0,0,0.25); }
+.navbar-default .navbar-brand { color: var(--color-white) !important; font-weight:600; font-size:18px; letter-spacing:.5px; }
+.navbar-default .navbar-brand:hover { color: var(--color-accent) !important; }
+.navbar-default .navbar-nav > li > a { color: var(--color-white) !important; font-weight:500; }
+.navbar-default .navbar-nav > li > a:hover { background:#2C4355 !important; color: var(--color-white) !important; }
+.navbar-default .navbar-nav > .active > a, .navbar-default .navbar-nav > .active > a:hover, .navbar-default .navbar-nav > .active > a:focus { background: var(--color-secondary) !important; color: var(--color-white) !important; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+
+.nav-tabs { border-bottom:2px solid var(--color-primary); }
+.nav-tabs > li > a { background: var(--color-accent) !important; color: var(--color-primary) !important; border:none !important; margin-right:4px; border-radius:6px 6px 0 0; font-weight:500; transition: all .25s ease; }
+.nav-tabs > li > a:hover { background: var(--color-secondary) !important; color: var(--color-white) !important; }
+.nav-tabs > li.active > a, .nav-tabs > li.active > a:hover, .nav-tabs > li.active > a:focus { background: var(--color-primary) !important; color: var(--color-white) !important; }
+
+/* Focus accesible */
+*:focus { outline:2px dashed var(--focus-ring) !important; outline-offset:2px; }
+body.high-contrast *:focus { outline:3px solid var(--focus-ring) !important; }
+
+/* Data row hover */
+.data-row { transition: background-color .2s ease; }
+.data-row:hover { background-color:#f0f2f4 !important; }
+body.high-contrast .data-row:hover { background-color: var(--color-accent) !important; }
+
+/* Leaflet adjustments */
+.leaflet-container { border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .panel-custom { padding:15px; }
+  .metric-card { padding:15px; }
+  .separador-jovenes, .separador-adultos { font-size:12px; }
+}
+
+/* Fin CSS unificado */
+/* Paleta de colores institucional EMTP */
+:root {
+  --color-primary: #34536A;
+  --color-secondary: #B35A5A;
+  --color-tertiary: #232A36;
+  --color-accent: #C0C8D2;
+  --color-neutral: #F4F6F8;
+  --color-gray-a: #4A4A4A;
+  --color-gray-b: #8A8A8A;
+  --color-black: #181818;
+  --color-white: #FFFFFF;
+}
+
+body, .container-fluid, .fluidPage {
+  background: var(--color-neutral) !important;
+  color: var(--color-tertiary) !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-primary) !important;
+  font-weight: 600;
+}
+
+.panel-custom {
+  background: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(52,83,106,0.07);
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--color-primary);
+}
+
+.metric-card {
+  background: var(--color-accent);
+  color: var(--color-tertiary);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(52,83,106,0.06);
+  transition: transform 0.2s ease-in-out;
+}
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52,83,106,0.12);
+}
+
+.resumen-seccion {
+  background: var(--color-white);
+  /* =============================
+     Paleta institucional (única)
+     ============================= */
+  :root {
+    --color-primary: #34536A;    /* Azul petróleo */
+    --color-secondary: #B35A5A;  /* Rojo ladrillo */
+    --color-tertiary: #232A36;   /* Texto principal */
+    --color-accent: #C0C8D2;     /* Acento claro */
+    --color-neutral: #F4F6F8;    /* Fondo general */
+    --color-gray-a: #4A4A4A;
+    --color-gray-b: #8A8A8A;
+    --color-black: #181818;
+    --color-white: #FFFFFF;
+    --focus-ring: #FFB347;       /* Amarillo suave para foco */
+  }
+
+  /* Modo Alto Contraste (activar añadiendo class="high-contrast" al body) */
+  body.high-contrast {
+    --color-primary: #102535;  /* Más oscuro */
+    --color-secondary: #7E1010; /* Más profundo para contraste */
+    --color-tertiary: #000000;
+    --color-accent: #E2E6EA;   /* Más claro para separación */
+    --color-neutral: #FFFFFF;  /* Fondo blanco puro */
+    --color-gray-a: #111111;
+    --color-gray-b: #333333;
+    --focus-ring: #FFCC00;     /* Alto contraste */
+  }
+
+  /* Preferencia del usuario (cuando el navegador soporte forced-colors) */
+  @media (forced-colors: active) {
+    body { forced-color-adjust: none; }
+    body { background: Window; color: WindowText; }
+  }
+
+  body, .container-fluid, .fluidPage { background: var(--color-neutral) !important; color: var(--color-tertiary) !important; }
+  h1, h2, h3, h4, h5, h6 { color: var(--color-primary) !important; font-weight: 600; }
+
+  .panel-custom { background: var(--color-white); border-radius: 8px; box-shadow: 0 2px 4px rgba(52,83,106,0.07); padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--color-primary); }
+  .metric-card { background: var(--color-accent); color: var(--color-tertiary); border-radius: 8px; box-shadow: 0 1px 2px rgba(52,83,106,0.06); transition: transform .2s ease-in-out; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(52,83,106,0.12); }
+  .resumen-seccion { background: var(--color-white); color: var(--color-gray-a); border-radius: 6px; transition: all .3s ease; }
+  .resumen-seccion:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,83,106,0.10); }
+  .separador-jovenes { background: var(--color-primary); color: var(--color-white); padding:10px 15px; margin:10px 0; border-radius:6px; font-weight:bold; text-align:center; font-size:14px; }
+  .separador-adultos { background: var(--color-secondary); color: var(--color-white); padding:10px 15px; margin:10px 0; border-radius:6px; font-weight:bold; text-align:center; font-size:14px; }
+  .btn-primary { background: var(--color-primary); border:none; border-radius:6px; color:var(--color-white)!important; transition: all .3s ease; }
+  .btn-primary:hover { background: var(--color-secondary); transform: translateY(-1px); box-shadow:0 4px 8px rgba(52,83,106,0.13); }
+  .btn-success { background: var(--color-secondary); border:none; border-radius:6px; color:var(--color-white)!important; }
+  .btn-success:hover { background: var(--color-primary); transform: translateY(-1px); }
+  .download-panel { background: var(--color-accent); padding:15px; border-radius:8px; border-left:4px solid var(--color-primary); transition:all .3s ease; }
+  .download-panel:hover { box-shadow:0 3px 10px rgba(52,83,106,0.09); transform:translateY(-1px); }
+  .update-box { background: var(--color-accent); border:1px solid var(--color-primary); border-radius:8px; padding:20px; margin:20px 0; border-left:4px solid var(--color-primary); }
+
+  /* Ajustes de formularios */
+  .form-group { margin-bottom: 15px; }
+  .selectize-input { border-radius:4px; border:1px solid #ced4da; transition:border-color .15s ease-in-out, box-shadow .15s ease-in-out; }
+  .selectize-input:focus { border-color: var(--color-primary); box-shadow:0 0 0 0.2rem rgba(52,83,106,0.35); }
+
+  /* Accesibilidad: foco visible y consistente */
+  *:focus { outline:2px dashed var(--focus-ring) !important; outline-offset:2px; }
+  body.high-contrast *:focus { outline:3px solid var(--focus-ring) !important; }
+
+  /* Navbar y Tabs (ver secciones unificadas más abajo) */
+  /* (Las reglas ya definidas al final se mantienen; aquí sólo garantizamos contraste en modo alto contraste) */
+  body.high-contrast .navbar.navbar-default { background:#102535 !important; }
+  body.high-contrast .navbar-default .navbar-nav > li > a { color:#FFFFFF !important; }
+  body.high-contrast .nav-tabs > li > a { background:#E2E6EA !important; color:#102535 !important; }
+  body.high-contrast .nav-tabs > li.active > a { background:#102535 !important; color:#FFFFFF !important; }
+
+  /* Tablas hover accesibles */
+  .data-row { transition: background-color .2s ease; }
+  .data-row:hover { background-color:#f0f2f4 !important; }
+  body.high-contrast .data-row:hover { background-color:#E2E6EA !important; }
+}
+.btn-primary:hover {
+  background: var(--color-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(52,83,106,0.13);
+}
+.btn-success {
+  background: var(--color-secondary);
+  border: none;
+  border-radius: 6px;
+  color: var(--color-white) !important;
+}
+.btn-success:hover {
+  background: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.download-panel {
+  background: var(--color-accent);
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid var(--color-primary);
+  transition: all 0.3s ease;
+}
+.download-panel:hover {
+  box-shadow: 0 3px 10px rgba(52,83,106,0.09);
+  transform: translateY(-1px);
+}
+
+.update-box {
+  background: var(--color-accent);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  border-left: 4px solid var(--color-primary);
+}
+/* Paleta de colores institucional EMTP */
+:root {
+  --color-primary: #006FB3;
+  --color-secondary: #FE6565;
+  --color-tertiary: #0A132D;
+  --color-accent: #A8B7C7;
+  --color-neutral: #EEEEEE;
+  --color-gray-a: #4A4A4A;
+  --color-gray-b: #8A8A8A;
+  --color-black: #111111;
+  --color-white: #FFFFFF;
+}
+
+body, .container-fluid, .fluidPage {
+  background: var(--color-neutral) !important;
+  color: var(--color-tertiary) !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-primary) !important;
+}
+
+.panel-custom {
+  background: var(--color-white);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--color-primary);
+}
+
+.metric-card {
+  background: var(--color-accent);
+  color: var(--color-tertiary);
+  box-shadow: 0 4px 8px rgba(0,111,179,0.15);
+}
+
+.resumen-seccion {
+  background: var(--color-white);
+  color: var(--color-gray-a);
+  color: var(--color-primary) !important;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.resumen-seccion:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,111,179,0.10);
+}
+
+.separador-jovenes {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  background: var(--color-accent);
+  color: var(--color-tertiary);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(52,83,106,0.06);
+  transition: transform 0.2s ease-in-out;
+  font-weight: bold;
+  text-align: center;
+  font-size: 14px;
+  box-shadow: 0 4px 8px rgba(52,83,106,0.12);
+}
+/* Limpieza de restos duplicados eliminados */
+/* Estilos personalizados para el Visualizador EMTP */
+
+/* Panel personalizado con sombra */
+.panel-custom {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--color-primary);
+}
+
+/* Tarjetas de métricas */
+.metric-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* (Mantener secciones previas depuradas; se eliminaron duplicados) */
+
+/* Separadores especiales para Jóvenes y Adultos */
+.separador-jovenes {
+  background: linear-gradient(135deg, #2ECC71, #27AE60);
+  color: white;
+  padding: 10px 15px;
+  margin: 10px 0;
+  border-radius: 6px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 14px;
+  animation: slideInLeft 0.5s ease-out;
+}
+
+.separador-adultos {
+  background: linear-gradient(135deg, #E67E22, #D35400);
+  color: white;
+  padding: 10px 15px;
+  margin: 10px 0;
+  border-radius: 6px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 14px;
+  animation: slideInRight 0.5s ease-out;
+}
+
+/* Animaciones para los separadores */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Estilos para filtros */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.selectize-input {
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.selectize-input:focus {
+  border-color: #3498DB;
+  box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Estilos para botones */
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-tertiary));
+  border: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-tertiary), var(--color-primary));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  border: none;
+  border-radius: 6px;
+}
+
+.btn-success:hover {
+  background: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+  transform: translateY(-1px);
+}
+
+/* Estilos para alertas */
+.alert-info {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+/* Mejoras para el mapa */
+.leaflet-container {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Espaciado mejorado */
+.fluidRow {
+  margin-bottom: 15px;
+}
+
+/* Títulos con iconos */
+h3, h4, h5 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Panel de descarga mejorado */
+.download-panel {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid var(--color-primary);
+  transition: all 0.3s ease;
+}
+
+.download-panel:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+/* Responsividad mejorada */
+@media (max-width: 768px) {
+  .panel-custom {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .metric-card {
+    margin-bottom: 15px;
+  }
+  
+  .separador-jovenes,
+  .separador-adultos {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}
+
+/* Estilos para cuadro de actualizaciones */
+.update-box {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  border-left: 4px solid var(--color-primary);
+}
+
+.update-box h4 {
+  color: #2C3E50;
+  margin-bottom: 15px;
+}
+
+.update-box ul {
+  margin-bottom: 0;
+}
+
+.update-box li {
+  margin-bottom: 8px;
+  color: #495057;
+}
+
+/* Mejora de hover para filas de datos */
+.data-row {
+  transition: background-color 0.2s ease;
+}
+
+.data-row:hover {
+  background-color: #f8f9fa !important;
+}
+
+/* ============================= */
+/* Unificación de colores pestañas */
+/* ============================= */
+/* Paleta final: usa las primeras variables declaradas (primary=#34536A, secondary=#B35A5A) */
+
+/* Navbar principal */
+.navbar.navbar-default {
+  background-color: var(--color-primary) !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.navbar-default .navbar-brand, 
+.navbar-default .navbar-nav > li > a {
+  color: var(--color-white) !important;
+  font-weight: 500;
+}
+.navbar-default .navbar-nav > li > a:hover, 
+.navbar-default .navbar-brand:hover {
+  color: var(--color-accent) !important;
+  background: transparent !important;
+}
+.navbar-default .navbar-nav > .active > a,
+.navbar-default .navbar-nav > .active > a:focus,
+.navbar-default .navbar-nav > .active > a:hover {
+  background-color: var(--color-secondary) !important;
+  color: var(--color-white) !important;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.15);
+}
+
+/* Subpestañas (tabsetPanel) */
+.nav-tabs { border-bottom: 2px solid var(--color-primary); }
+.nav-tabs > li > a {
+  border: none !important;
+  color: var(--color-primary) !important;
+  background: var(--color-accent);
+  margin-right: 4px;
+  border-radius: 6px 6px 0 0;
+  font-weight: 500;
+  transition: all .25s ease;
+}
+.nav-tabs > li > a:hover {
+  background: var(--color-secondary);
+  color: var(--color-white) !important;
+}
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:focus,
+.nav-tabs > li.active > a:hover {
+  background: var(--color-primary) !important;
+  color: var(--color-white) !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Pestañas dentro de panel personalizado (si se usan .nav-tabs-custom) */
+.nav-tabs-custom { background: var(--color-white); border-radius:8px; padding:10px; }
+.nav-tabs-custom .nav-tabs { border-bottom:none; }
+.nav-tabs-custom .nav-tabs > li > a { background: var(--color-accent); color: var(--color-primary) !important; }
+.nav-tabs-custom .nav-tabs > li > a:hover { background: var(--color-secondary); color: var(--color-white) !important; }
+.nav-tabs-custom .nav-tabs > li.active > a,
+.nav-tabs-custom .nav-tabs > li.active > a:focus,
+.nav-tabs-custom .nav-tabs > li.active > a:hover { background: var(--color-primary) !important; color: var(--color-white) !important; }
+
+/* Ajuste de focus para accesibilidad */
+.nav-tabs > li > a:focus { outline: 2px solid var(--color-secondary); outline-offset: 2px; }
+
+/* Botones primarios alineados a nueva paleta (override final) */
+.btn-primary { background: var(--color-primary) !important; color: var(--color-white) !important; border:none; }
+.btn-primary:hover { background: var(--color-secondary) !important; }
+
+/* Evitar que gradientes anteriores sobrescriban */
+.btn-success { background: var(--color-secondary) !important; border:none; }
+.btn-success:hover { background: var(--color-primary) !important; }
+
+/* Fin unificación (depurada) */
+
+/* ============================= */
+/* Refuerzo final de Navbar y Tabs (contraste) */
+/* ============================= */
+.navbar.navbar-default {
+  background: #34536A !important; /* primary */
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+.navbar-default .navbar-brand {
+  color: #FFFFFF !important;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: .5px;
+}
+.navbar-default .navbar-brand:hover,
+.navbar-default .navbar-brand:focus {
+  color: #C0C8D2 !important; /* accent */
+}
+.navbar-default .navbar-nav > li > a {
+  color: #FFFFFF !important;
+  font-weight: 500;
+  transition: background .25s ease, color .25s ease;
+}
+.navbar-default .navbar-nav > li > a:hover,
+.navbar-default .navbar-nav > li > a:focus {
+  background: #2C4355 !important; /* darkened primary */
+  color: #FFFFFF !important;
+}
+.navbar-default .navbar-nav > .active > a,
+.navbar-default .navbar-nav > .active > a:hover,
+.navbar-default .navbar-nav > .active > a:focus {
+  background: #B35A5A !important; /* secondary */
+  color: #FFFFFF !important;
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2);
+}
+/* Dropdown (si existiera) */
+.navbar-default .navbar-nav .open .dropdown-menu > li > a { color:#34536A !important; }
+.navbar-default .navbar-nav .open .dropdown-menu { background:#FFFFFF !important; }
+
+/* Tabs internos refinados (mayor contraste en hover) */
+.nav-tabs > li > a {
+  background: #C0C8D2 !important; /* accent */
+  color: #34536A !important;
+  border: none !important;
+}
+.nav-tabs > li > a:hover {
+  background: #B35A5A !important; /* secondary */
+  color: #FFFFFF !important;
+}
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  background: #34536A !important; /* primary */
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+/* Asegurar contraste si algún tema residual aplica gradientes */
+.navbar, .navbar-default { background-image: none !important; }
+
+/* Fin refuerzo */
+/* ============================================================
+   MEJORAS UX (jun 2026): tarjetas clicables, acordeones,
+   badge de vigencia de datos y ayudas (tooltips).
+   ============================================================ */
+
+/* Tarjetas de navegación del Inicio: la tarjeta es contenedor; SOLO el título es enlace */
+.nav-card {
+  background: #fff; border: 1px solid var(--color-border-light, #ECF0F1);
+  border-left: 4px solid var(--color-primary, #34536A);
+  border-radius: 10px; padding: 14px 16px; height: 100%;
+  box-shadow: 0 1px 3px rgba(52,83,106,.06); transition: box-shadow .2s, transform .2s;
+}
+.nav-card:hover { box-shadow: 0 6px 16px rgba(52,83,106,.12); transform: translateY(-2px); }
+.nav-card-title { margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+.nav-card p { margin: 0; color: var(--color-gray-a, #4A4A4A); font-size: 13px; line-height: 1.5; }
+
+/* Enlace del título: hereda el color del borde de la tarjeta vía currentColor */
+.nav-title-link, a.nav-title-link {
+  color: var(--color-primary, #34536A) !important; text-decoration: none !important;
+  font-weight: 700; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color .15s;
+}
+.nav-title-link:hover, a.nav-title-link:hover {
+  text-decoration: none !important; border-bottom-color: currentColor;
+}
+.nav-title-link:focus { outline: 2px solid var(--focus-ring, #FFB347); outline-offset: 3px; border-radius: 2px; }
+
+/* Acordeones nativos (<details>/<summary>) para secciones largas del Inicio */
+details.emtp-acc {
+  border: 1px solid var(--color-border-light, #ECF0F1); border-radius: 8px;
+  background: var(--color-neutral, #FAFAFA); margin-bottom: 16px; overflow: hidden;
+}
+details.emtp-acc > summary {
+  cursor: pointer; list-style: none; padding: 14px 18px; font-weight: 700;
+  color: var(--color-text, #2C3E50); background: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+}
+details.emtp-acc > summary::-webkit-details-marker { display: none; }
+details.emtp-acc > summary::after { content: "\25BC"; font-size: 11px; color: var(--color-muted,#7F8C8D); transition: transform .2s; }
+details.emtp-acc[open] > summary::after { transform: rotate(180deg); }
+details.emtp-acc > summary:hover { background: #f4f7fa; }
+details.emtp-acc > .emtp-acc-body { padding: 4px 18px 16px; }
+
+/* Badge de vigencia de los datos en la barra de navegación */
+.data-vintage-badge {
+  display: inline-block; margin-left: 10px; padding: 3px 9px; border-radius: 12px;
+  font-size: 11px; font-weight: 600; letter-spacing: .3px;
+  background: rgba(255,255,255,.18); color: #fff; vertical-align: middle;
+}
+
+/* Ícono de ayuda con tooltip nativo (atributo title) */
+.help-tip {
+  display: inline-block; width: 15px; height: 15px; line-height: 15px; text-align: center;
+  border-radius: 50%; background: var(--color-muted, #7F8C8D); color: #fff;
+  font-size: 10px; font-weight: 700; cursor: help; margin-left: 4px;
+}
+.help-tip:hover { background: var(--color-primary, #34536A); }
+
+/* =====================================================================
+   CAPA DE REFINAMIENTO PROFESIONAL (v2 — junio 2026)
+   Se carga al final: estandariza tipografía, tarjetas, navbar, sub-tabs,
+   tablas y espaciado para un acabado de nivel profesional.
+   ===================================================================== */
+
+/* --- Tipografía y base --- */
+body, .container-fluid {
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font-family: "Inter", "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: #2B3440 !important;
+  font-size: 15px; line-height: 1.55;
+}
+h1,h2,h3,h4,h5,h6 { letter-spacing: -0.01em; }
+h3 { font-size: 1.45rem; } h4 { font-size: 1.15rem; }
+a { color: #34536A; }
+hr { border-top: 1px solid #E8ECF1; }
+
+/* --- Tarjetas métricas: blanco limpio, borde sutil, jerarquía clara --- */
+.metric-card {
+  background: #FFFFFF !important;
+  color: #2B3440 !important;
+  border: 1px solid #E8ECF1;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 2px rgba(16,36,53,.04), 0 2px 8px rgba(16,36,53,.04) !important;
+  padding: 18px 20px;
+}
+.metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(16,36,53,.10) !important; }
+.metric-card h5 { color:#6B7785 !important; font-size:12.5px !important; font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin:0 0 2px; }
+.metric-card h2 { color:#1F2A37 !important; font-weight:700; font-size:2rem; margin:4px 0 0; line-height:1.1; }
+.metric-card h3 { color:#1F2A37 !important; font-weight:700; }
+/* KPIs del Inicio (metric-number / metric-label / metric-ico) */
+.metric-number { font-weight:800; font-size:2rem; color:#1F2A37; line-height:1.05; }
+.metric-label { color:#6B7785; font-size:12.5px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+.metric-ico { opacity:.85; }
+
+/* --- Paneles y wellPanel: tarjeta limpia --- */
+.panel-custom {
+  border:1px solid #E8ECF1; border-left:4px solid var(--color-primary);
+  border-radius:12px; box-shadow:0 1px 3px rgba(16,36,53,.05); padding:22px;
+}
+.well, .shiny-input-container .well, .wellPanel, div.well {
+  background:#FFFFFF !important; border:1px solid #E8ECF1 !important;
+  border-radius:12px !important; box-shadow:0 1px 3px rgba(16,36,53,.05) !important;
+}
+
+/* --- Navbar: profundidad sutil, mejor ritmo --- */
+.navbar.navbar-default {
+  background: linear-gradient(180deg, #3A5C75 0%, #34536A 100%) !important;
+  box-shadow: 0 2px 10px rgba(16,36,53,.18) !important; min-height: 56px;
+}
+.navbar-default .navbar-brand { font-size:17px !important; letter-spacing:.3px; }
+.navbar-default .navbar-nav > li > a {
+  font-size:14px; padding:18px 16px; border-radius:0;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+.navbar-default .navbar-nav > .active > a,
+.navbar-default .navbar-nav > .active > a:hover,
+.navbar-default .navbar-nav > .active > a:focus {
+  background: rgba(255,255,255,.14) !important; color:#fff !important;
+  box-shadow: inset 0 -3px 0 var(--color-secondary) !important;
+}
+
+/* --- Sub-pestañas (tabsetPanel): estilo pill limpio --- */
+.nav-tabs { border-bottom:1px solid #E2E8EE; margin-bottom:16px; }
+.nav-tabs > li > a {
+  background: transparent !important; color:#5A6B7B !important;
+  border:none !important; border-radius:8px 8px 0 0; padding:9px 16px; font-weight:600;
+}
+.nav-tabs > li > a:hover { background:#EEF2F6 !important; color:var(--color-primary) !important; }
+.nav-tabs > li.active > a, .nav-tabs > li.active > a:hover, .nav-tabs > li.active > a:focus {
+  background: transparent !important; color: var(--color-primary) !important;
+  border:none !important; box-shadow: inset 0 -3px 0 var(--color-primary);
+}
+
+/* --- Botones --- */
+.btn { border-radius:8px; font-weight:600; letter-spacing:.2px; }
+.btn-primary { background: var(--color-primary) !important; box-shadow:0 1px 2px rgba(16,36,53,.15); }
+.btn-primary:hover { background:#2A4255 !important; }
+.btn-sm { border-radius:6px; }
+
+/* --- Tablas DT: cabecera y filas profesionales --- */
+table.dataTable thead th {
+  background:#F3F6F9; color:#33455A; font-weight:700; font-size:12.5px;
+  text-transform:uppercase; letter-spacing:.3px; border-bottom:2px solid #E2E8EE !important;
+}
+table.dataTable tbody td { font-size:13.5px; color:#2B3440; }
+table.dataTable.row-border tbody tr:hover, table.dataTable.display tbody tr:hover { background:#F5F8FB !important; }
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background: var(--color-primary) !important; color:#fff !important; border-radius:6px; border:none;
+}
+.dataTables_wrapper .dataTables_filter input { border:1px solid #D7DEE6; border-radius:6px; padding:4px 8px; }
+
+/* --- Contenedores de gráficos y mapa --- */
+.js-plotly-plot, .leaflet-container { border-radius:10px; }
+.leaflet-container { box-shadow: inset 0 0 0 1px #E8ECF1; }
+
+/* --- Tarjetas de navegación del Inicio --- */
+.nav-card {
+  background:#fff; border:1px solid #E8ECF1; border-left:4px solid var(--color-primary);
+  border-radius:12px; padding:16px 18px; height:100%;
+  box-shadow:0 1px 3px rgba(16,36,53,.05); transition: transform .18s ease, box-shadow .18s ease;
+}
+.nav-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(16,36,53,.10); }
+.nav-card-title { margin:0 0 6px; font-size:1.02rem; }
+.nav-title-link { color:var(--color-primary) !important; text-decoration:none; font-weight:700; }
+.nav-card p { color:#6B7785; font-size:13px; margin:0; line-height:1.5; }
+
+/* --- Hero --- */
+.hero-title { font-weight:800; letter-spacing:-.02em; }
+.hero-sub { opacity:.92; }
+
+/* --- Alertas más suaves --- */
+.alert { border-radius:10px; }
+.alert-info { background:#EDF3F8 !important; border:1px solid #D4E2EE !important; color:#2B3440 !important; }
+
+/* --- Espaciado de secciones --- */
+.tab-content { padding-top: 6px; }
+.well > h3:first-child, .panel-custom > h4:first-child { margin-top:0; }
+
+/* =====================================================================
+   CAPA DE REFINAMIENTO PRO v3 — revisión UI senior (junio 2026)
+   Controles de formulario, foco accesible, densidad, tablas, mapa.
+   ===================================================================== */
+
+/* --- Foco: solo teclado (no el dashed naranja en cada clic de mouse) --- */
+*:focus:not(:focus-visible) { outline: none !important; }
+*:focus-visible {
+  outline: 2px solid var(--color-primary) !important; outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Etiquetas de formulario --- */
+.control-label, .shiny-input-container > label, label.control-label {
+  font-size: 12.5px !important; font-weight: 600 !important;
+  color: #51606E !important; letter-spacing: .2px; margin-bottom: 5px;
+}
+.help-tip { background:#9AA7B4; }
+
+/* --- Inputs (select, text) y selectize: consistentes y modernos --- */
+.form-control, .selectize-input {
+  min-height: 40px !important; border: 1px solid #D9E0E7 !important;
+  border-radius: 8px !important; font-size: 13.5px !important;
+  color: #2B3440 !important; box-shadow: none !important; padding: 7px 12px;
+}
+.selectize-input { display:flex; align-items:center; flex-wrap:wrap; }
+.form-control:focus, .selectize-input.focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(52,83,106,.12) !important;
+}
+.selectize-dropdown { border-radius:8px; border:1px solid #D9E0E7; font-size:13.5px; box-shadow:0 8px 24px rgba(16,36,53,.12); }
+.selectize-dropdown .active { background: #EDF2F6; color: var(--color-primary); }
+.selectize-input > .item { background:#EAEFF3; border:1px solid #D9E0E7; border-radius:6px; color:#34536A; }
+
+/* --- Encabezado de paneles de filtro: etiqueta de sección sobria --- */
+.panel-custom > h4:first-child, .well > h4:first-child {
+  font-size: .92rem !important; text-transform: uppercase; letter-spacing:.5px;
+  color:#51606E !important; font-weight:700; padding-bottom:10px;
+  border-bottom:1px solid #EEF1F4; margin-bottom:14px;
+}
+
+/* --- Botón "reiniciar/limpiar": secundario, no protagonista --- */
+.btn-warning {
+  background:#F4F6F8 !important; color:#51606E !important;
+  border:1px solid #D9E0E7 !important; box-shadow:none;
+}
+.btn-warning:hover { background:#E9EDF1 !important; color:#34536A !important; filter:none; }
+
+/* --- Tarjetas métricas: densidad y jerarquía finas --- */
+.metric-card { padding:16px 18px; }
+.metric-card h2, .metric-card h3 { letter-spacing:-.02em; }
+
+/* --- KPIs del Inicio: número con tabular-nums para alineación --- */
+.metric-number, .metric-card h2, .metric-card h3 { font-variant-numeric: tabular-nums; }
+
+/* --- Tablas DT: aire y legibilidad --- */
+.dataTables_wrapper { font-size:13.5px; }
+table.dataTable tbody td { padding:9px 12px !important; }
+table.dataTable thead th { padding:10px 12px !important; }
+.dataTables_wrapper .dataTables_length select { min-height:32px !important; padding:2px 8px; }
+.dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_length label { color:#6B7785; font-size:12.5px; }
+
+/* --- Mapa: popup tipográfico --- */
+.leaflet-popup-content-wrapper { border-radius:10px; box-shadow:0 8px 24px rgba(16,36,53,.18); }
+.leaflet-popup-content { font-family:"Inter","Roboto",sans-serif; margin:12px 14px; }
+
+/* --- Encabezado de sección centrado (h3 con ícono) --- */
+.tab-pane > .container-fluid > div > h3,
+.fluid-row h3 { font-weight:700; }
+
+/* --- Alertas: tono institucional uniforme --- */
+.alert-warning { background:#FBF3E4 !important; border:1px solid #EAD9B6 !important; color:#5A4B2E !important; }
+.alert-secondary { background:#F4F6F8 !important; border:1px solid #E2E8EE !important; color:#51606E !important; }
+
+/* --- wellPanel de filtros dentro de columnas: separación interna --- */
+.well .form-group { margin-bottom: 12px; }
+
+/* --- Scrollbar sutil (webkit) --- */
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-thumb { background:#C7D0DA; border-radius:6px; border:2px solid #F4F6F8; }
+::-webkit-scrollbar-thumb:hover { background:#A9B6C4; }
