@@ -5,7 +5,7 @@ account: datostp
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 17074429
-bundleId: 12175963
+bundleId: 12192606
 url: https://datostp.shinyapps.io/datospublicosEMTP/
 version: 1
 asMultiple: FALSE

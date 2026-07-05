@@ -552,8 +552,12 @@ doc_agg <- docentes_raw %>%
   )
 
 # 5e-bis. Cohorte titulación al año de egreso (para minuta):
-#   egre_2023 = egresados EMTP 2023 por RBD ; titu_2024_egre_2023 = titulados 2024 con egreso 2023
-egre_2023_agg <- leer_csv(RUTA_EGRESADOS_2023, enc = ENC_EGRESADOS, delim = ";") %>%
+#   egre_2023 = egresados EMTP 2024 por RBD ; titu_2024_egre_2023 = titulados 2025 con egreso 2024
+#   (nombres de columna heredados de la actualización 2024→2023; el contenido
+#   ya corresponde al ciclo 2025→2024. Pendiente: renombrar a egre_cohorte /
+#   titu_cohorte en una futura limpieza, lo que también requeriría actualizar
+#   la referencia en app.R linea ~6221.)
+egre_2023_agg <- leer_csv(RUTA_EGRESADOS_CONT, enc = ENC_EGRESADOS, delim = ";") %>%
   rename_with(toupper) %>%
   mutate(RBD = as.character(RBD), COD_ENSE = suppressWarnings(as.numeric(COD_ENSE))) %>%
   filter(!is.na(COD_ENSE), COD_ENSE >= EMTP_ENSE_MIN, COD_ENSE <= EMTP_ENSE_MAX,
@@ -568,7 +572,7 @@ titu_cohorte_agg <- leer_csv(RUTA_TITULADOS, enc = ENC_TITULADOS) %>%
          ESTADO_PRACTICA = suppressWarnings(as.integer(ESTADO_PRACTICA)),
          AGNO_ESCOLAR = suppressWarnings(as.integer(AGNO_ESCOLAR))) %>%
   filter(!is.na(COD_ENSE), COD_ENSE >= EMTP_ENSE_MIN, COD_ENSE <= EMTP_ENSE_MAX,
-         !is.na(ESTADO_PRACTICA), ESTADO_PRACTICA == 1, AGNO_ESCOLAR == 2023) %>%
+         !is.na(ESTADO_PRACTICA), ESTADO_PRACTICA == 1, AGNO_ESCOLAR == 2024) %>%
   group_by(rbd = RBD) %>% summarise(titu_2024_egre_2023 = n(), .groups = "drop")
 
 # 5e. Ensamblar base_apoyo + columnas no reconstruibles (NA) que la minuta referencia

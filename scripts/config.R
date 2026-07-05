@@ -18,7 +18,7 @@ ANIO_EGRESADOS_CONT <- 2024   # egresados usados para continuidad ES
 ANIO_IVE            <- 2026
 ANIO_SIMCE          <- 2025
 ANIO_IDPS           <- 2025
-ANIO_TITULADOS      <- 2024
+ANIO_TITULADOS      <- 2025
 
 # --- Rutas a archivos fuente ------------------------------------------------
 # Se usa list.files() para evitar problemas con tildes en nombres de archivos
@@ -49,7 +49,7 @@ RUTA_IDPS_DIM   <- file.path(DATOS_BRUTOS, "2M-1", "Archivos CSV (Planos)",
                               "idps2M2025_rbd_dim_preliminar.csv")
 RUTA_IDPS_NIV   <- file.path(DATOS_BRUTOS, "2M-1", "Archivos CSV (Planos)",
                               "idps2m2025_rbd_subdim_niveles_preliminar.csv")
-RUTA_TITULADOS  <- .buscar_archivo("Practicantes-y-Titulados-Tecnico-Profesional-2024",
+RUTA_TITULADOS  <- .buscar_archivo("Practicantes-y-Titulados-Tecnico-Profesional-2025",
                                    "Titulados.*MRUN\\.csv$")
 RUTA_COMUNAS    <- "data/geographic/comunas_simplificado.rds"
 
