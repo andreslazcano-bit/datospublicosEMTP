@@ -367,7 +367,7 @@ ui <- fluidPage(
                              tags$span(class="data-vintage-badge",
                                tags$i(class="fas fa-chart-bar"), " SIMCE · IDPS 2025 · IVE 2026"),
                              tags$span(class="data-vintage-badge",
-                               tags$i(class="fas fa-user-graduate"), " Egresados y titulados 2024")
+                               tags$i(class="fas fa-user-graduate"), " Egresados 2024 · Titulados 2025")
                            )
                     ),
                     column(4,
@@ -427,7 +427,7 @@ ui <- fluidPage(
                 column(3, div(class="metric-card", style="border-left:6px solid #6E5F80;",
                   div(class="metric-number", style="color:var(--color-text)",
                       format(nrow(titulados), big.mark=".")),
-                  div(class="metric-label", "Titulados TP 2024")))
+                  div(class="metric-label", "Titulados TP 2025")))
               ),
 
               br(),
@@ -471,9 +471,9 @@ ui <- fluidPage(
                     tags$p("Cada indicador usa la versión más reciente publicada por su fuente oficial. La continuidad y la titulación se miden sobre la cohorte de egreso del año anterior, por lo que provienen de bases distintas:",
                            style="margin-bottom: 8px; color: #333333; font-weight: 500; line-height: 1.5;"),
                     tags$ul(style="margin: 0 0 0 4px; color:#333; font-weight:500; line-height:1.6;",
-                      tags$li(tags$strong("2025: "), "Matrícula EMTP, docentes, matrícula en educación superior, SIMCE 2° medio e IDPS 2° medio."),
+                      tags$li(tags$strong("2025: "), "Matrícula EMTP, docentes, matrícula en educación superior, SIMCE 2° medio, IDPS 2° medio y titulados Técnico-Profesional (titulaciones registradas durante el año)."),
                       tags$li(tags$strong("2026: "), "Índice de Vulnerabilidad Escolar (IVE-JUNAEB)."),
-                      tags$li(tags$strong("2024: "), "Egresados de enseñanza media y titulados Técnico-Profesional (cohorte base de continuidad y titulación)."))
+                      tags$li(tags$strong("2024: "), "Egresados de enseñanza media (cohorte base de continuidad de estudios)."))
                   )
                 )
               ),
@@ -690,6 +690,8 @@ ui <- fluidPage(
                 tags$summary(tags$span(tags$i(class="fas fa-history"), " Historial de Actualizaciones")),
                 tags$div(class = "emtp-acc-body",
                 tags$ul(
+                  tags$li(tags$strong("5 de julio de 2026:"), " Se actualizó la base de Practicantes y Titulados Técnico-Profesional a la cohorte ",
+                    tags$strong("2025"), " (56.757 titulaciones registradas durante el año calendario 2025)."),
                   tags$li(tags$strong("18 de junio de 2026:"), " Reconstrucción completa del pipeline de datos desde las bases brutas oficiales. Se incorporaron ",
                     tags$strong("SIMCE 2° medio (por Estándares de Aprendizaje), IDPS, IVE y Titulados TP"), ". La pestaña ", tags$em("Establecimientos"),
                     " unifica búsqueda y ficha por liceo (ubicación en mapa, especialidades, SIMCE e IDPS). Nueva sub-pestaña de ", tags$em("Titulados TP"),
@@ -6184,7 +6186,7 @@ server <- function(input, output, session) {
   })
 
   # ── Sub-pestaña: Titulados Técnico-Profesionales ──────────────────────────
-  # Analiza los titulados TP 2024: distribución por especialidad, región,
+  # Analiza los titulados TP 2025: distribución por especialidad, región,
   # dependencia, género y sector económico de la práctica profesional.
   tit_dep_label <- function(cod) dplyr::case_when(
     as.character(cod)=="1"~"Municipal", as.character(cod)=="2"~"Particular Subvencionado",
