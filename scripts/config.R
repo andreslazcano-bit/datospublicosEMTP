@@ -8,7 +8,9 @@
 #   4. rsconnect::deployApp()
 # =============================================================================
 
-DATOS_BRUTOS <- "/Users/andreslazcano/00.ProyectosShiny/emtp_publica/datos brutos"
+# Ruta a los datos brutos: variable de entorno EMTP_DATOS_BRUTOS (en .Renviron)
+# o, por defecto, la carpeta hermana ../datos/brutos (relativa a la raíz de la app)
+DATOS_BRUTOS <- Sys.getenv("EMTP_DATOS_BRUTOS", unset = file.path("..", "datos", "brutos"))
 
 # --- Años activos -----------------------------------------------------------
 ANIO_MATRICULA      <- 2025
