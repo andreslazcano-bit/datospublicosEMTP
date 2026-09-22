@@ -227,7 +227,7 @@ cat("  Cargando asistencia anual 2025 (archivo grande)...\n")
 asis_lookup <- {
   con <- pipe(paste("cat", shQuote(RUTA_ASISTENCIA)), open = "rb")
   on.exit(close(con), add = TRUE)
-  readr::read_delim(con, delim = ";", locale = readr::locale(encoding = "latin1"),
+  readr::read_delim(con, delim = ";", locale = readr::locale(encoding = ENC_ASISTENCIA),
                     show_col_types = FALSE, name_repair = "minimal",
                     col_select = c("MRUN","RBD","CATEGORIA_ASIS_ANUAL","TASA_ASISTENCIA_ANUAL")) %>%
     transmute(mrun = as.character(MRUN), rbd = as.character(RBD),

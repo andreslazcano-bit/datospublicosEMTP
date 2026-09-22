@@ -61,13 +61,17 @@ EMTP_ENSE_MIN <- 410
 EMTP_ENSE_MAX <- 863
 
 # --- Codificaciones ---------------------------------------------------------
-ENC_MATRICULA  <- "latin1"
-ENC_DIRECTORIO <- "latin1"
+# Verificadas byte a byte (iconv -f UTF-8) sobre los archivos 2024-2025.
+# Matrícula y Directorio son UTF-8 con BOM: leerlos como latin1 NO da error,
+# produce doble codificación silenciosa ("VALPARAÃ­SO").
+ENC_MATRICULA  <- "UTF-8"
+ENC_DIRECTORIO <- "UTF-8"
+ENC_ASISTENCIA <- "UTF-8"
 ENC_DOCENTES   <- "UTF-8"
 ENC_EGRESADOS  <- "UTF-8"
 ENC_MAT_ES     <- "UTF-8"
-ENC_SIMCE      <- "latin1"
-ENC_IDPS       <- "UTF-8"
+ENC_SIMCE      <- "latin1"   # SIMCE e IDPS (Agencia): latin1 sin BOM
+ENC_IDPS       <- "latin1"
 ENC_TITULADOS  <- "UTF-8"
 
 # --- Validaciones (actualizar con cada nuevo año) ---------------------------
