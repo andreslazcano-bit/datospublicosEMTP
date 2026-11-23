@@ -9,8 +9,9 @@
 #   docentes.rds        -> docentes_raw
 #   docentes_idich.rds  -> docentes_idich
 #   docentes_long.rds   -> docentes_especialidad_long
-#   egresados.rds       -> egresados_2024         (esquema 22 cols con labels)
-#   continuidad.rds     -> continuidad_es         (egresados2024 × mat_es2025)
+#   asistencia.rds      -> asistencia_raw         (matrícula EMTP del año de la asistencia anual + categoría)
+#   egresados.rds       -> egresados_2024         (nombre heredado: egresados ANIO_EGRESADOS_CONT)
+#   continuidad.rds     -> continuidad_es         (egresados ANIO_EGRESADOS_CONT × mat_ES ANIO_MAT_ES)
 #   indicadores_continuidad.rds
 #   titulados.rds       -> titulados (ESTADO_PRACTICA==1)
 #   idps_dimensiones.rds-> idps_dim (para tab Establecimientos)
@@ -35,8 +36,8 @@ source("scripts/config.R")
 
 t0 <- proc.time()
 cat("=============================================================================\n")
-cat(sprintf("PREPARAR DATOS EMTP | Matrícula %d | Docentes %d | Egresados %d | mat_ES %d\n",
-            ANIO_MATRICULA, ANIO_DOCENTES, ANIO_EGRESADOS_CONT, ANIO_MATRICULA))
+cat(sprintf("PREPARAR DATOS EMTP | Matrícula %d | Asistencia %d | Docentes %d | Egresados %d | mat_ES %d\n",
+            ANIO_MATRICULA, ANIO_ASISTENCIA, ANIO_DOCENTES, ANIO_EGRESADOS_CONT, ANIO_MAT_ES))
 cat("=============================================================================\n\n")
 
 dir.create("data/app", showWarnings = FALSE, recursive = TRUE)
@@ -62,7 +63,12 @@ guardar <- function(obj, nombre) {
   invisible(ruta)
 }
 # pipe("cat ...") evita problemas NFD/NFC en macOS con tildes en nombres de archivo
-leer_csv <- function(ruta, enc = "UTF-8", delim = ";") {
+# delim = NULL detecta el separador en la primera línea (Egresados 2025 viene con comas; el resto con ";")
+leer_csv <- function(ruta, enc = "UTF-8", delim = NULL) {
+  if (is.null(delim)) {
+    h <- readLines(pipe(paste("head -1", shQuote(ruta))), warn = FALSE)
+    delim <- if (lengths(regmatches(h, gregexpr(",", h))) > lengths(regmatches(h, gregexpr(";", h)))) "," else ";"
+  }
   con <- pipe(paste("cat", shQuote(ruta)), open = "rb")
   on.exit(close(con), add = TRUE)
   read_delim(con, delim = delim, locale = locale(encoding = enc),
@@ -171,8 +177,9 @@ asignar_rft <- function(deprov) {
 # 1. MATRÍCULA EMTP  (esquema en minúsculas, filtro 3°-4° global)
 # =============================================================================
 cat(">>> [1/9] MATRÍCULA EMTP <<<\n")
-mat_raw <- leer_csv(RUTA_MATRICULA, enc = ENC_MATRICULA) %>% rename_with(tolower)
-
+# Arma la base de matrícula EMTP de la app desde un archivo de matrícula (se usa para el año vigente y para
+# el año de la asistencia anual, que puede ser anterior).
+armar_matricula <- function(mat_raw) {
 # tipo_ensenanza_emtp por RBD (calculado sobre TODO EMTP, antes del filtro de grado)
 tipo_ense_rbd <- mat_raw %>%
   mutate(rbd = as.character(rbd), cod_ense = as.numeric(cod_ense)) %>%
@@ -221,9 +228,45 @@ matricula_raw <- mat_raw %>%
     emb_alu              = NA,
     int_alu              = NA
   )
+matricula_raw
+}
 
-# Asistencia anual 2025 (cruce por MRUN+RBD) — archivo grande, se leen solo 3 columnas
-cat("  Cargando asistencia anual 2025 (archivo grande)...\n")
+mat_raw <- leer_csv(RUTA_MATRICULA, enc = ENC_MATRICULA) %>% rename_with(tolower)
+matricula_raw <- armar_matricula(mat_raw)
+
+validar(nrow(matricula_raw), VAL_MATRICULA_EMTP_MIN, VAL_MATRICULA_EMTP_MAX, "Filas matrícula EMTP")
+ok("RBDs únicos", n_distinct(matricula_raw$rbd))
+ok("Especialidades", n_distinct(matricula_raw$nom_espe[!is.na(matricula_raw$nom_espe)]))
+sin_nombre <- sort(unique(matricula_raw$cod_espe[is.na(matricula_raw$nom_espe)]))
+if (length(sin_nombre)) warning("Códigos de especialidad sin nombre en dic_especialidades: ",
+                                paste(sin_nombre, collapse = ", "), call. = FALSE)
+guardar(matricula_raw, "matricula.rds")
+rbds_emtp <- unique(matricula_raw$rbd)
+
+# Matrícula TOTAL del establecimiento (todas las enseñanzas) — para base_apoyo / minutas
+# (columna MATRICULA_OFICIAL_2025: nombre heredado, el valor es del año ANIO_MATRICULA)
+mat_total_rbd <- mat_raw %>%
+  mutate(rbd = as.character(rbd)) %>%
+  group_by(rbd) %>%
+  summarise(MATRICULA_OFICIAL_2025 = n(), .groups = "drop")
+rm(mat_raw); gc(verbose = FALSE)
+
+# =============================================================================
+# 1b. ASISTENCIA ANUAL  (base aparte: matrícula EMTP del año ANIO_ASISTENCIA + categoría anual)
+#     La asistencia anual se publica ~10 meses después que la matrícula; hasta entonces se muestra
+#     la del último año completo con sus propios estudiantes (no se cruza con la matrícula vigente).
+# =============================================================================
+cat(sprintf("\n>>> [1b/9] ASISTENCIA ANUAL %d <<<\n", ANIO_ASISTENCIA))
+mat_ant_raw <- leer_csv(RUTA_MATRICULA_ANT, enc = ENC_MATRICULA) %>% rename_with(tolower)
+# Género por MRUN del año anterior (los egresados no traen GEN_ALU) — se usa en continuidad
+gen_alu_ant <- mat_ant_raw %>%
+  transmute(MRUN = as.character(mrun), GEN_ALU = suppressWarnings(as.integer(gen_alu))) %>%
+  filter(!is.na(MRUN), MRUN != "NA", !is.na(GEN_ALU)) %>%
+  distinct(MRUN, .keep_all = TRUE)
+asistencia_raw <- armar_matricula(mat_ant_raw)
+rm(mat_ant_raw); gc(verbose = FALSE)
+
+cat(sprintf("  Cargando asistencia anual %d (archivo grande)...\n", ANIO_ASISTENCIA))
 asis_lookup <- {
   con <- pipe(paste("cat", shQuote(RUTA_ASISTENCIA)), open = "rb")
   on.exit(close(con), add = TRUE)
@@ -236,23 +279,12 @@ asis_lookup <- {
               tasa_asis_anual      = suppressWarnings(as.numeric(gsub(",", ".", TASA_ASISTENCIA_ANUAL))) * 100) %>%
     distinct(mrun, rbd, .keep_all = TRUE)
 }
-matricula_raw <- matricula_raw %>% left_join(asis_lookup, by = c("rbd","mrun"))
-ok("Matrícula con asistencia (cat. no nula)", sum(!is.na(matricula_raw$categoria_asis_anual)))
-rm(asis_lookup); gc(verbose = FALSE)
-
-validar(nrow(matricula_raw), VAL_MATRICULA_EMTP_MIN, VAL_MATRICULA_EMTP_MAX, "Filas matrícula EMTP")
-ok("RBDs únicos", n_distinct(matricula_raw$rbd))
-ok("Especialidades", n_distinct(matricula_raw$nom_espe[!is.na(matricula_raw$nom_espe)]))
-guardar(matricula_raw, "matricula.rds")
-rbds_emtp <- unique(matricula_raw$rbd)
-
-# Matrícula TOTAL del establecimiento (todas las enseñanzas) — para base_apoyo / minutas
-mat_total_rbd <- mat_raw %>%
-  mutate(rbd = as.character(rbd)) %>%
-  group_by(rbd) %>%
-  summarise(MATRICULA_OFICIAL_2025 = n(), .groups = "drop")
-
-rm(mat_raw); gc(verbose = FALSE)
+asistencia_raw <- asistencia_raw %>% left_join(asis_lookup, by = c("rbd","mrun")) %>%
+  mutate(anio_asistencia = ANIO_ASISTENCIA)
+ok(sprintf("Matrícula EMTP %d", ANIO_ASISTENCIA), nrow(asistencia_raw))
+ok("Con asistencia (cat. no nula)", sum(!is.na(asistencia_raw$categoria_asis_anual)))
+guardar(asistencia_raw, "asistencia.rds")
+rm(asis_lookup, asistencia_raw); gc(verbose = FALSE)
 
 # =============================================================================
 # 2. DOCENTES EMTP  (port de la lógica original)
@@ -345,12 +377,15 @@ rm(docentes_csv); gc(verbose = FALSE)
 # =============================================================================
 # 3. EGRESADOS EMTP 2024  (esquema 22 cols con labels)
 # =============================================================================
-cat("\n>>> [3/9] EGRESADOS EMTP 2024 <<<\n")
-egresados_2024 <- leer_csv(RUTA_EGRESADOS_CONT, enc = ENC_EGRESADOS, delim = ";") %>%
+cat(sprintf("\n>>> [3/9] EGRESADOS EMTP %d <<<\n", ANIO_EGRESADOS_CONT))
+egresados_2024 <- leer_csv(RUTA_EGRESADOS_CONT, enc = ENC_EGRESADOS) %>%
   rename_with(toupper) %>%
   mutate(
     RBD      = as.character(RBD),
     MRUN     = as.character(MRUN),
+    # Nota en escala 1-7: 2024 viene "4,7"; 2025 viene sin decimal ("61" = 6,1)
+    PROM_NOTAS_ALU = { x <- suppressWarnings(as.numeric(gsub(",", ".", as.character(PROM_NOTAS_ALU))))
+                       ifelse(!is.na(x) & x > 7, x / 10, x) },
     COD_ENSE = suppressWarnings(as.numeric(COD_ENSE)),
     COD_GRADO= suppressWarnings(as.numeric(COD_GRADO))
   ) %>%
@@ -363,7 +398,7 @@ egresados_2024 <- leer_csv(RUTA_EGRESADOS_CONT, enc = ENC_EGRESADOS, delim = ";"
     DEPENDENCIA_label = dep_label(COD_DEPE2),
     RURALIDAD_label   = case_when(RURAL_RBD == 0 ~ "Urbano", RURAL_RBD == 1 ~ "Rural", TRUE ~ NA_character_)
   )
-validar(nrow(egresados_2024), VAL_EGRESADOS_EMTP_MIN, VAL_EGRESADOS_EMTP_MAX, "Egresados EMTP 2024")
+validar(nrow(egresados_2024), VAL_EGRESADOS_EMTP_MIN, VAL_EGRESADOS_EMTP_MAX, paste("Egresados EMTP", ANIO_EGRESADOS_CONT))
 ok("RBDs con egresados", n_distinct(egresados_2024$RBD))
 guardar(egresados_2024, "egresados.rds")
 
@@ -372,15 +407,10 @@ guardar(egresados_2024, "egresados.rds")
 # =============================================================================
 cat("\n>>> [4/9] CONTINUIDAD ES <<<\n")
 
-# Género desde matrícula 2024 por MRUN (los egresados no traen GEN_ALU)
-cat("  Cargando género desde matrícula 2024...\n")
-gen_alu_2024 <- leer_csv(RUTA_MATRICULA_2024, enc = ENC_MATRICULA) %>%
-  rename_with(toupper) %>%
-  transmute(MRUN = as.character(MRUN), GEN_ALU = suppressWarnings(as.integer(GEN_ALU))) %>%
-  filter(!is.na(MRUN), MRUN != "NA", !is.na(GEN_ALU)) %>%
-  distinct(MRUN, .keep_all = TRUE)
+# Género desde la matrícula del año de egreso (gen_alu_ant, cargado en 1b)
+gen_alu_2024 <- gen_alu_ant; rm(gen_alu_ant)
 
-cat("  Cargando matrícula ES 2025 (archivo grande)...\n")
+cat(sprintf("  Cargando matrícula ES %d (archivo grande)...\n", ANIO_MAT_ES))
 mat_es <- leer_csv(RUTA_MAT_ES, enc = ENC_MAT_ES) %>%
   rename_with(tolower) %>%
   transmute(
@@ -424,7 +454,7 @@ indicadores_continuidad <- list(
   n_hombres                = nrow(hom),
   n_hombres_continuan      = sum(hom$continua_es, na.rm = TRUE),
   anio_egresados           = ANIO_EGRESADOS_CONT,
-  anio_mat_es              = ANIO_MATRICULA
+  anio_mat_es              = ANIO_MAT_ES
 )
 indicadores_continuidad$brecha_genero <-
   round(abs(indicadores_continuidad$pct_continuidad_mujeres -
@@ -557,7 +587,7 @@ doc_agg <- docentes_raw %>%
 #   ya corresponde al ciclo 2025→2024. Pendiente: renombrar a egre_cohorte /
 #   titu_cohorte en una futura limpieza, lo que también requeriría actualizar
 #   la referencia en app.R linea ~6221.)
-egre_2023_agg <- leer_csv(RUTA_EGRESADOS_CONT, enc = ENC_EGRESADOS, delim = ";") %>%
+egre_2023_agg <- leer_csv(RUTA_EGRESADOS_COH, enc = ENC_EGRESADOS) %>%
   rename_with(toupper) %>%
   mutate(RBD = as.character(RBD), COD_ENSE = suppressWarnings(as.numeric(COD_ENSE))) %>%
   filter(!is.na(COD_ENSE), COD_ENSE >= EMTP_ENSE_MIN, COD_ENSE <= EMTP_ENSE_MAX,
@@ -572,7 +602,7 @@ titu_cohorte_agg <- leer_csv(RUTA_TITULADOS, enc = ENC_TITULADOS) %>%
          ESTADO_PRACTICA = suppressWarnings(as.integer(ESTADO_PRACTICA)),
          AGNO_ESCOLAR = suppressWarnings(as.integer(AGNO_ESCOLAR))) %>%
   filter(!is.na(COD_ENSE), COD_ENSE >= EMTP_ENSE_MIN, COD_ENSE <= EMTP_ENSE_MAX,
-         !is.na(ESTADO_PRACTICA), ESTADO_PRACTICA == 1, AGNO_ESCOLAR == 2024) %>%
+         !is.na(ESTADO_PRACTICA), ESTADO_PRACTICA == 1, AGNO_ESCOLAR == ANIO_EGRESADOS_COH) %>%
   group_by(rbd = RBD) %>% summarise(titu_2024_egre_2023 = n(), .groups = "drop")
 
 # 5e. Ensamblar base_apoyo + columnas no reconstruibles (NA) que la minuta referencia
@@ -738,7 +768,10 @@ meta <- list(
   choices_especialidades     = choices_especialidades,
   anio_matricula             = ANIO_MATRICULA,
   anio_docentes              = ANIO_DOCENTES,
-  anio_egresados             = ANIO_EGRESADOS_CONT
+  anio_egresados             = ANIO_EGRESADOS_CONT,
+  anio_asistencia            = ANIO_ASISTENCIA,
+  anio_mat_es                = ANIO_MAT_ES,
+  anio_titulados             = ANIO_TITULADOS
 )
 guardar(meta, "meta.rds")
 

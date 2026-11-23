@@ -12,6 +12,7 @@ header-includes:
 params:
   nombre_territorio: NA
   territorio_filtrado: NA
+  asistencia_filtrada: NULL
   resumen_matricula: NA
   detalle_especialidades: NA
   resumen_etnias: NA
@@ -53,14 +54,14 @@ tabla_centrada <- function(df, caption = NULL, font_size = NULL) {
 ```
 
 ```{r titulo, results='asis', echo=FALSE}
-cat(paste0("# RESUMEN DEL TERRITORIO: ", toupper(params$nombre_territorio), " - DATOS 2024/2025\n\n"))
+cat(paste0("# RESUMEN DEL TERRITORIO: ", toupper(params$nombre_territorio), " - DATOS 2026\n\n"))
 ```
 
 > Este informe resume los datos para la Educación Media Técnico-Profesional (EMTP) del territorio. La información proviene de registros oficiales del Ministerio de Educación e incluye matrícula general, especialidades, género, pueblos originarios, nacionalidad, dependencia administrativa, acceso a recursos, académicos y datos de indicadores personales y sociales (IDPS).
 
-**Nota:** La matrícula de estudiantes corresponde a **2025**. Algunos datos complementarios corresponden a **2024**:
-- **Datos 2025:** Matrícula, especialidades, niveles de enseñanza, grados
-- **Datos 2024:** Pueblos originarios, embarazo, internado, nacionalidad, categoría de asistencia (estos se actualizarán cuando estén disponibles)
+**Nota:** cada sección usa el último dato publicado de su fuente:
+- **2026:** matrícula, especialidades, niveles de enseñanza, grados (corte 30-04-2026) y docentes (corte 30-06-2026).
+- **2025:** asistencia anual (último año completo; sus estudiantes son los matriculados en 2025), SIMCE e IDPS 2° medio, titulados (egresados 2024).
 
 # I. MATRÍCULA GENERAL
 
@@ -114,7 +115,7 @@ if (nrow(resumen) > 0) {
 }
 ```
 
-# II. MATRÍCULA POR ESPECIALIDAD (datos 2025)
+# II. MATRÍCULA POR ESPECIALIDAD (datos 2026)
 
 ```{r especialidades, echo=FALSE}
 esp <- df %>%
@@ -242,21 +243,21 @@ totales_tasa <- df_tasa %>%
   mutate(tasa_titulacion_pct = round(100 * tasa_titulacion, 1))
 
 # Mensaje explicativo
-cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2024 de estudiantes egresados en 2023 dividido por el total de egresados 2023. Se trunca al 100% si corresponde.\n\n")
+cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2025 de estudiantes egresados en 2024 dividido por el total de egresados 2024. Se trunca al 100% si corresponde.\n\n")
 
 # Mostramos la tabla con flextable
 totales_tasa %>%
   select(total_egresados, total_titulados, tasa_titulacion_pct) %>%
   rename(
     `Total Egresados 2023` = total_egresados,
-    `Total Titulados 2024` = total_titulados,
+    `Total Titulados 2025` = total_titulados,
     `Tasa de Titulación (%)` = tasa_titulacion_pct
   ) %>%
   tabla_centrada()
 ```
 > ~**Nota:** Cuando se filtra por especialidad, la tasa de titulación corresponde al total de titulados de los establecimientos que la imparten, ya que, por el momento, no se dispone de información de titulación desagregada por especialidad. Por lo tanto, el valor reflejado NO corresponde exclusivamente a la especialidad seleccionada.~
 
-# V. DATOS DE DOCENTES EMTP 2025
+# V. DATOS DE DOCENTES EMTP 2026
 ```{r docentes_territorio, echo=FALSE}
 # Verificamos que lleguen datos
 docentes <- params$docentes_emtp
@@ -539,16 +540,19 @@ if (!is.null(params$base_apoyo) && nrow(params$base_apoyo) > 0) {
 ```
 > ~**Nota:** Equipamiento SLEP se calculó en base a presupuestos, considerando las modificaciones presupuestarias.~
 
-# VIII. ASISTENCIA ANUAL POR TERRITORIO (CATEGORÍA)
+# VIII. ASISTENCIA ANUAL 2025 POR TERRITORIO (CATEGORÍA)
 ```{r asistencia_promedio, echo=FALSE, results='asis'}
-.tap <- suppressWarnings(as.numeric(params$territorio_filtrado$tasa_asis_anual))
+# Asistencia anual: base aparte (estudiantes EMTP 2025 con su categoría anual 2025)
+datos_asis <- if (is.data.frame(params$asistencia_filtrada)) params$asistencia_filtrada else params$territorio_filtrado
+cat("*Último año con asistencia anual publicada (2025). La asistencia anual 2026 se publica a inicios de 2027.*\n\n")
+.tap <- suppressWarnings(as.numeric(datos_asis$tasa_asis_anual))
 if (any(is.finite(.tap)))
   cat(sprintf("**Asistencia promedio del territorio: %s%%**\n\n",
               gsub("\\.", ",", sprintf("%.1f", mean(.tap, na.rm = TRUE)))))
 ```
 ```{r asistencia_anual, echo=FALSE}
 
-datos <- params$territorio_filtrado
+datos <- datos_asis
 
 # Crear categorías y factor con orden
 datos_asistencia <- datos %>%
@@ -597,11 +601,11 @@ datos_asistencia <- datos %>%
 
 # Generar tabla
 if (knitr::is_latex_output()) {
-  tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual y género")
+  tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual 2025 y género")
 } else {
   suppressWarnings(
     flextable(datos_asistencia) %>%
-      set_caption("Distribución de estudiantes según categoría de asistencia anual y género") %>%
+      set_caption("Distribución de estudiantes según categoría de asistencia anual 2025 y género") %>%
       colformat_num(
         j = c("Hombres", "Mujeres", "Total"), 
         big.mark = ".", 

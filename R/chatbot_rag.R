@@ -30,7 +30,7 @@ rag_kb_estatica <- list(
     id = "matricula_estructura",
     titulo = "Estructura y Variables de la Base de Matrícula EMTP",
     cuerpo = paste(
-      "La base de matrícula tiene una fila por estudiante-especialidad en 2025.",
+      "La base de matrícula tiene una fila por estudiante-especialidad en 2026.",
       "Variables clave: rbd (identificador del establecimiento), mrun (identificador único del estudiante),",
       "cod_ense (tipo de enseñanza: 410-510-610-710-810 jóvenes, 463-563-663-763-863 adultos),",
       "cod_espe (código de especialidad), nom_espe (nombre de especialidad),",
@@ -62,7 +62,7 @@ rag_kb_estatica <- list(
       "Para identificar docentes de ESPECIALIDAD EMTP se usa: SUBSECTOR entre 41001 y 81004",
       "(excluyendo 31001-39999 que es Formación General).",
       "Para formación pedagógica: TIT_ID=1 indica título en Educación (pedagogía).",
-      "Los docentes están en 969-970 establecimientos con matrícula TP activa en 2025."
+      "Los docentes están en establecimientos con matrícula TP activa (Directorio de Docentes 2026)."
     )
   ),
 
@@ -103,8 +103,8 @@ rag_kb_estatica <- list(
     titulo = "Egresados EMTP y Continuidad en Educación Superior",
     cuerpo = paste(
       "Los egresados EMTP son estudiantes que completaron el 4° año de enseñanza media técnico-profesional.",
-      "La base de egresados 2024 tiene 73.931 registros.",
-      "La tasa de continuidad general ES 2024-2025 es 50.3%.",
+      "La base de egresados (año de egreso 2025) se describe en las estadísticas reales de egresados.",
+      "La continuidad se mide como matrícula en educación superior el año siguiente al egreso (egresados 2025 → ES 2026).",
       "Se distingue continuidad en: CFT, IP y Universidades.",
       "Los CFT son la principal vía de continuidad para egresados EMTP.",
       "La información de continuidad proviene del cruce entre base MINEDUC y base SIES."
@@ -134,7 +134,7 @@ rag_kb_estatica <- list(
     id = "asistencia_anual",
     titulo = "Asistencia Anual de los Estudiantes EMTP",
     cuerpo = paste(
-      "La asistencia anual 2025 se mide por estudiante (cruce MRUN + RBD) y se clasifica en cuatro categorías:",
+      "La asistencia anual 2025 (último año completo publicado; la de 2026 sale a inicios de 2027) se mide por estudiante matriculado en 2025 (cruce MRUN + RBD) y se clasifica en cuatro categorías:",
       "Categoría 1 = Inasistencia crítica (menos de 50% de asistencia);",
       "Categoría 2 = Inasistencia grave (entre 50% y 84%);",
       "Categoría 3 = Asistencia reiterada o en riesgo (entre 85% y 89%);",
@@ -151,10 +151,10 @@ rag_kb_estatica <- list(
     titulo = "Titulados EMTP y Práctica Profesional",
     cuerpo = paste(
       "Para titularse de la EMTP el estudiante debe aprobar una práctica profesional tras egresar de 4° medio.",
-      "La base de Practicantes y Titulados TP 2024 registra la práctica: especialidad (NOM_ESPE), sector (NOM_SECTOR),",
+      "La base de Practicantes y Titulados TP 2025 registra la práctica: especialidad (NOM_ESPE), sector (NOM_SECTOR),",
       "región/comuna del establecimiento, dependencia, género del estudiante, empresa y rubro económico de la práctica (GLOSA_RUBRO).",
-      "El total de titulados EMTP 2024 (prácticas aprobadas, ESTADO_PRACTICA aprobado) es 57.655 personas.",
-      "La tasa de titulación al año de egreso (cohorte de egresados 2023) es 76,7% y el tiempo medio a la titulación ~1,1 años.",
+      "El total de titulados EMTP 2025 (prácticas aprobadas, ESTADO_PRACTICA aprobado) es 56.757 personas.",
+      "La tasa de titulación al año de egreso se calcula con la cohorte de egresados 2024 titulados en 2025.",
       "El rubro económico de la práctica (GLOSA_RUBRO) describe el sector productivo de la empresa donde se realizó la práctica.",
       "Se puede consultar titulados por especialidad, región, dependencia, género o rubro de la práctica.",
       "Para profundizar, ve a la pestaña Egresados y Titulados (sub-pestaña Titulados)."
@@ -180,6 +180,17 @@ rag_kb_estatica <- list(
 # =============================================================================
 # 2. KB DINÁMICA (estadísticas reales de los datos cargados)
 # =============================================================================
+# Asistencia anual: base aparte (asistencia_raw, cargada en app.R) con los estudiantes EMTP del último año
+# con asistencia anual publicada. Si no existe, se usa la matrícula (versiones anteriores de la app).
+.asis_df <- function(mat = NULL) {
+  if (exists("asistencia_raw", envir = globalenv())) get("asistencia_raw", envir = globalenv()) else mat
+}
+.asis_anio <- function() {
+  a <- .asis_df()
+  if (is.data.frame(a) && "anio_asistencia" %in% names(a)) as.character(a$anio_asistencia[1]) else "2025"
+}
+.es_pregunta_asistencia <- function(q) grepl("asistenc|inasistenc|ausent", q)
+
 build_data_stats_kb <- function(matricula=NULL, docentes=NULL, egresados=NULL, continuidad=NULL,
                                 titulados=NULL, base_apoyo=NULL) {
   docs <- list()
@@ -214,22 +225,23 @@ build_data_stats_kb <- function(matricula=NULL, docentes=NULL, egresados=NULL, c
       }
       # Asistencia anual (promedio y % en cada categoría)
       asis_txt <- ""
-      if ("tasa_asis_anual" %in% names(matricula)) {
-        prom_asis <- round(mean(matricula$tasa_asis_anual, na.rm=TRUE), 1)
-        cat_tab   <- table(factor(as.character(matricula$categoria_asis_anual), levels=c("1","2","3","4")))
+      .asis <- .asis_df(matricula)
+      if ("tasa_asis_anual" %in% names(.asis)) {
+        prom_asis <- round(mean(.asis$tasa_asis_anual, na.rm=TRUE), 1)
+        cat_tab   <- table(factor(as.character(.asis$categoria_asis_anual), levels=c("1","2","3","4")))
         nv        <- sum(cat_tab)
         pct_esp   <- if (nv > 0) round(100*cat_tab["4"]/nv, 1) else NA
         pct_crit  <- if (nv > 0) round(100*cat_tab["1"]/nv, 1) else NA
-        asis_txt  <- paste0("Asistencia anual promedio de los estudiantes EMTP: ", prom_asis,
+        asis_txt  <- paste0("Asistencia anual ", .asis_anio(), " (último año completo) promedio de los estudiantes EMTP: ", prom_asis,
                             "%. Con asistencia esperada (>=90%): ", pct_esp,
                             "%. Con inasistencia crítica (<50%): ", pct_crit, "%.")
       }
 
       docs$stats_matricula <- list(
         id = "stats_matricula",
-        titulo = "Estadísticas Reales de Matrícula EMTP 2025",
+        titulo = "Estadísticas Reales de Matrícula EMTP 2026",
         cuerpo = paste(
-          paste0("Total registros matrícula EMTP 2025: ", format(n_total, big.mark="."), "."),
+          paste0("Total registros matrícula EMTP 2026: ", format(n_total, big.mark="."), "."),
           paste0("Número de establecimientos con matrícula TP: ", format(n_ee, big.mark="."), "."),
           paste0("Número de estudiantes únicos (MRUN): ", format(n_est, big.mark="."), "."),
           paste0("Distribución por género: ", pct_m, "% hombres, ", pct_f, "% mujeres."),
@@ -265,14 +277,14 @@ build_data_stats_kb <- function(matricula=NULL, docentes=NULL, egresados=NULL, c
 
       docs$stats_docentes <- list(
         id = "stats_docentes",
-        titulo = "Estadísticas Reales de Docentes EMTP 2025",
+        titulo = "Estadísticas Reales de Docentes EMTP 2026",
         cuerpo = paste(
-          paste0("Total de docentes únicos EMTP en 2025: ", format(n_doc, big.mark="."), "."),
+          paste0("Total de docentes únicos EMTP en 2026: ", format(n_doc, big.mark="."), "."),
           paste0("Establecimientos con docentes EMTP: ", format(n_ee_doc, big.mark="."), "."),
           paste0("Docentes de módulos de ESPECIALIDAD (SUBSECTOR 41001-81004): ", format(n_esp, big.mark="."), "."),
           if (!is.na(ped_pct)) paste0("Docentes de especialidad con título en Educación/pedagogía: ", ped_pct, "%.") else "",
           paste0("Promedio de horas contratadas: ", horas_prom, " horas."),
-          "Fuente: Directorio de Docentes MINEDUC, publicado julio 2025."
+          "Fuente: Directorio de Docentes MINEDUC, publicado julio 2026."
         )
       )
     }, error=function(e) NULL)
@@ -284,13 +296,13 @@ build_data_stats_kb <- function(matricula=NULL, docentes=NULL, egresados=NULL, c
       cont_txt <- ""
       if (!is.null(continuidad) && nrow(continuidad) > 0 && "continuidad_es" %in% names(continuidad)) {
         tasa <- round(100 * mean(continuidad$continuidad_es == 1, na.rm=TRUE), 1)
-        cont_txt <- paste0("Tasa de continuidad en educación superior (2024→2025): ", tasa, "%. ")
+        cont_txt <- paste0("Tasa de continuidad en educación superior (2025→2026): ", tasa, "%. ")
       }
       docs$stats_egresados <- list(
         id = "stats_egresados",
-        titulo = "Estadísticas Reales de Egresados EMTP 2024",
+        titulo = "Estadísticas Reales de Egresados EMTP 2025",
         cuerpo = paste(
-          paste0("Total de egresados EMTP en 2024: ", format(n_egr, big.mark="."), " estudiantes."),
+          paste0("Total de egresados EMTP en 2025: ", format(n_egr, big.mark="."), " estudiantes."),
           cont_txt,
           "El CFT es la vía más frecuente de continuidad para egresados EMTP."
         )
@@ -310,11 +322,11 @@ build_data_stats_kb <- function(matricula=NULL, docentes=NULL, egresados=NULL, c
       rub_t5 <- if (length(rub_t)) paste(names(head(rub_t,5)),"(",format(head(rub_t,5),big.mark="."),")", collapse="; ") else "N/D"
       docs$stats_titulados <- list(
         id = "stats_titulados",
-        titulo = "Estadísticas Reales de Titulados EMTP 2024 (práctica profesional)",
+        titulo = "Estadísticas Reales de Titulados EMTP 2025 (práctica profesional)",
         cuerpo = paste(
-          paste0("Total de titulados EMTP en 2024 (con práctica aprobada): ", format(n_tit, big.mark="."), "."),
+          paste0("Total de titulados EMTP en 2025 (con práctica aprobada): ", format(n_tit, big.mark="."), "."),
           paste0("Porcentaje de mujeres entre titulados: ", pct_fm, "%."),
-          "Tasa de titulación al año de egreso (cohorte egresados 2023): 76,7%.",
+          "Tasa de titulación al año de egreso: titulados 2025 de la cohorte de egresados 2024.",
           "Tiempo promedio a la titulación: ~1,1 años después del egreso.",
           paste0("Top 5 especialidades por titulados: ", esp_t5, "."),
           paste0("Top 5 rubros económicos de la práctica profesional: ", rub_t5, "."),
@@ -522,8 +534,8 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
                    "20\\d\\d-20\\d\\d|crecimiento de la matricula|proyeccion|hace \\d+ anos|",
                    "ano anterior|anos anteriores"), qn))
     return(paste0(
-      "Trabajo con datos de matrícula y docentes 2025 (y egresados 2024); no tengo la ",
-      "serie histórica para calcular tendencias. Para la evolución 2018-2025, descarga los ",
+      "Trabajo con datos de matrícula y docentes 2026 (egresados 2025, asistencia anual 2025); no tengo la ",
+      "serie histórica para calcular tendencias. Para la evolución 2018-2026, descarga los ",
       "Reportes Históricos en la pestaña Inicio."))
   if (grepl(paste0("\\bpor que\\b|mejor especialidad|peor especialidad|cual es la mejor|",
                    "cual es el mejor|me recomiendas|recomienda|deberia|conviene|tu opinion|",
@@ -1006,14 +1018,14 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
             found=TRUE, entity="matricula", n=0,
             filters=c(paste0("establecimientos en la comuna de ", toupper(com_mencionada))),
             raw_answer=paste0(
-              "Búsqueda en matrícula EMTP 2025 [establecimientos en la comuna de ",
+              "Búsqueda en matrícula EMTP 2026 [establecimientos en la comuna de ",
               toupper(com_mencionada), "]:\n",
               "  No se encontraron establecimientos EMTP ubicados en esta comuna.\n",
               "  La comuna '", toupper(com_mencionada), "' no tiene establecimientos de\n",
-              "  educación técnico-profesional media en la base de datos 2025.\n",
+              "  educación técnico-profesional media en la base de datos 2026.\n",
               "  Algunas comunas con establecimientos EMTP: ", muestra_coms, ", ...\n"
             ),
-            source="Matrícula EMTP 2025 (calculado en tiempo real)"
+            source="Matrícula EMTP 2026 (calculado en tiempo real)"
           ))
         }
       }
@@ -1073,7 +1085,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
         paste0("    ", catlbl[k], ": ", format(as.integer(tt[k]), big.mark="."),
                " (", round(100*tt[k]/nv, 1), "%)"))
       asis_txt <- paste0(
-        "  Asistencia anual de los estudiantes (con dato: ", format(nv, big.mark="."), "):\n",
+        "  Asistencia anual ", .asis_anio(), " de los estudiantes (último año completo; con dato: ", format(nv, big.mark="."), "):\n",
         paste(partes, collapse="\n"), "\n",
         if (is.finite(prom_a)) paste0("    Asistencia promedio: ",
                                       gsub("\\.", ",", sprintf("%.1f", prom_a)), "%\n") else "")
@@ -1105,7 +1117,8 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
 
   tiene_filtro_comuna <- any(grepl("^establecimientos en la comuna de", filters))
   raw <- paste0(
-    "Matrícula EMTP 2025 [", lbl, "]:\n",
+    if ("anio_asistencia" %in% names(df)) paste0("Estudiantes EMTP ", df$anio_asistencia[1], " (base de asistencia anual, último año completo) [")
+    else "Matrícula EMTP 2026 [", lbl, "]:\n",
     # Aclaración metodológica solo cuando hay filtro de comuna
     if (tiene_filtro_comuna)
       "  ACLARACIÓN: Este conteo incluye estudiantes matriculados en establecimientos\n  UBICADOS en la comuna indicada. El domicilio del estudiante puede ser distinto.\n"
@@ -1124,7 +1137,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   hay_desglose <- nzchar(asis_txt) || nzchar(sec_txt)
   list(found=TRUE, entity="matricula", raw_answer=raw, n=n, filters=filters,
        render_raw=hay_desglose,
-       source="Matrícula EMTP 2025 (calculado en tiempo real)")
+       source="Matrícula EMTP 2026 (calculado en tiempo real)")
 }
 
 # ── Diccionario subsectores TP y matcher ────────────────────────────────────
@@ -1344,7 +1357,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   }
 
   raw <- paste0(
-    "Docentes EMTP 2025 [", lbl, "]:\n",
+    "Docentes EMTP 2026 [", lbl, "]:\n",
     "  Docentes únicos (personas): ", format(n_uniq, big.mark="."), "\n",
     gen_txt,
     if (!is.na(n_ee)) paste0("  Establecimientos: ", format(n_ee, big.mark="."), "\n") else "",
@@ -1356,7 +1369,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
     ped_txt
   )
   list(found=TRUE, entity="docentes", raw_answer=raw, n=n_uniq, filters=filters,
-       source="Directorio Docentes EMTP 2025 (calculado en tiempo real)")
+       source="Directorio Docentes EMTP 2026 (calculado en tiempo real)")
 }
 
 # ── Consulta sobre establecimientos ─────────────────────────────────────────
@@ -1385,11 +1398,11 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
           return(list(found=TRUE, entity="establecimientos", n=0,
             filters=c(paste0("comuna: ", toupper(com))),
             raw_answer=paste0(
-              "Establecimientos EMTP 2025 [comuna: ", toupper(com), "]:\n",
+              "Establecimientos EMTP 2026 [comuna: ", toupper(com), "]:\n",
               "  No se encontraron establecimientos EMTP en esa comuna.\n",
               "  Comunas con establecimientos EMTP: ", muestra, ", ...\n"
             ),
-            source="Matrícula EMTP 2025 (calculado en tiempo real)"))
+            source="Matrícula EMTP 2026 (calculado en tiempo real)"))
         }
         filters <- c(filters, paste0("comuna: ", com))
       }
@@ -1447,12 +1460,12 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   }
 
   raw  <- paste0(
-    "Establecimientos EMTP 2025 [", lbl, "]:\n",
+    "Establecimientos EMTP 2026 [", lbl, "]:\n",
     "  Establecimientos (RBD únicos): ", format(n_ee, big.mark="."), "\n",
     lista_txt
   )
   list(found=TRUE, entity="establecimientos", raw_answer=raw, n=n_ee, filters=filters,
-       source="Matrícula EMTP 2025 (calculado en tiempo real)")
+       source="Matrícula EMTP 2026 (calculado en tiempo real)")
 }
 
 # ── Especialidades ofrecidas según tipo de establecimiento ──────────────────
@@ -1552,7 +1565,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   }
 
   raw <- paste0(
-    "Especialidades EMTP 2025 [", lbl, "]:\n",
+    "Especialidades EMTP 2026 [", lbl, "]:\n",
     "  Establecimientos (RBD únicos): ", format(n_ee_total, big.mark="."), "\n",
     "  Especialidades distintas: ", n_esp, "\n",
     if (nzchar(lista_ee_txt)) lista_ee_txt else paste0(
@@ -1564,7 +1577,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
 
   list(found=TRUE, entity="especialidades", raw_answer=raw,
        n=n_esp, filters=filters,
-       source="Matrícula EMTP 2025 (calculado en tiempo real)")
+       source="Matrícula EMTP 2026 (calculado en tiempo real)")
 }
 
 # ── Ficha completa de un establecimiento por RBD ────────────────────────────
@@ -1596,11 +1609,11 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
       found=TRUE, entity="rbd", n=0, filters=paste0("RBD ", rbd_str),
       raw_answer=paste0(
         "Consulta RBD ", rbd_str, ":\n",
-        "  No se encontró este RBD en la base de matrícula EMTP 2025.\n",
+        "  No se encontró este RBD en la base de matrícula EMTP 2026.\n",
         "  Posibles causas: el establecimiento no imparte EMTP, el código es incorrecto\n",
         "  o no está activo en el período reportado.\n"
       ),
-      source="Matrícula EMTP 2025 (calculado en tiempo real)"
+      source="Matrícula EMTP 2026 (calculado en tiempo real)"
     ))
   }
 
@@ -1651,7 +1664,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   if ("nom_espe" %in% names(sub_mat))
     esps <- sort(unique(sub_mat$nom_espe[!is.na(sub_mat$nom_espe) & nzchar(sub_mat$nom_espe)]))
   esps_txt <- if (length(esps) > 0)
-    paste0("  Especialidades EMTP (matrícula 2025):\n",
+    paste0("  Especialidades EMTP (matrícula 2026):\n",
            paste0("    • ", esps, collapse="\n"), "\n")
   else "  Especialidades: no disponibles en la base de matrícula\n"
 
@@ -1688,10 +1701,12 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
 
   # --- Asistencia (desde matrícula del propio RBD) ---
   asis_txt <- ""
-  if ("tasa_asis_anual" %in% names(sub_mat)) {
-    prom_a <- mean(sub_mat$tasa_asis_anual, na.rm=TRUE)
+  .asis <- .asis_df(mat)
+  sub_asis <- .asis[!is.na(.asis$rbd) & as.character(.asis$rbd) == rbd_str, ]
+  if ("tasa_asis_anual" %in% names(sub_asis)) {
+    prom_a <- mean(sub_asis$tasa_asis_anual, na.rm=TRUE)
     if (is.finite(prom_a))
-      asis_txt <- paste0("  Asistencia promedio 2025: ",
+      asis_txt <- paste0("  Asistencia anual promedio ", .asis_anio(), ": ",
                          gsub("\\.", ",", sprintf("%.1f", prom_a)), "%\n")
   }
 
@@ -1755,7 +1770,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
     "  Dependencia: ", depe_lbl, slep, "\n",
     "  Ruralidad: ", rural, "\n",
     "  Red de Futa (RFT): ", rft_val, "\n",
-    "  Matrícula EMTP total 2025: ", format(n_tot, big.mark="."), "\n",
+    "  Matrícula EMTP total 2026: ", format(n_tot, big.mark="."), "\n",
     "  Hombres: ", n_h, " (", pct_h, "%) | Mujeres: ", n_m, " (", pct_m, "%)\n",
     asis_txt,
     grados_txt,
@@ -1770,7 +1785,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   )
   list(found=TRUE, entity="rbd", n=n_tot, filters=paste0("RBD ", rbd_str),
        raw_answer=raw, render_raw=TRUE,
-       source="Matrícula + Docentes EMTP 2025 (calculado en tiempo real)")
+       source="Matrícula + Docentes EMTP 2026 (calculado en tiempo real)")
 }
 
 # ─── Extracción de filtros activos (para contexto persistente) ──────────────
@@ -2047,11 +2062,11 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   }
 
   raw <- paste0(
-    "Comparación por ", axis_lbl, " — ", unidad, " EMTP 2025:\n",
+    "Comparación por ", axis_lbl, " — ", unidad, " EMTP 2026:\n",
     paste(lines, collapse="\n"), "\n", concl)
   list(found=TRUE, entity="comparativa", raw_answer=raw,
        n=sum(ns, na.rm=TRUE), filters=paste0("comparación por ", axis_lbl),
-       source="EMTP 2025 (calculado en tiempo real)")
+       source="EMTP 2026 (calculado en tiempo real)")
 }
 
 # =============================================================================
@@ -2082,8 +2097,8 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
       matricula        = if (!is.null(mat) && nrow(mat) > 0) .query_matricula(q, mat) else NULL,
       establecimientos = if (!is.null(mat) && nrow(mat) > 0) .query_establecimientos(q, mat) else NULL,
       egresados        = if (!is.null(egr) && nrow(egr) > 0)
-        list(raw_answer = paste0("Egresados EMTP 2024: ", format(nrow(egr), big.mark="."), " registros.\n"),
-             source = "Base egresados EMTP 2024 (tiempo real)") else NULL)
+        list(raw_answer = paste0("Egresados EMTP 2025: ", format(nrow(egr), big.mark="."), " registros.\n"),
+             source = "Base egresados EMTP 2025 (tiempo real)") else NULL)
     if (!is.null(r)) { parts <- c(parts, r$raw_answer); srcs <- c(srcs, r$source) }
   }
   if (length(parts) < 2) return(NULL)
@@ -2165,7 +2180,7 @@ retrieve_docs_with_kb <- function(query, index, kb, top_k=3) {
   )
   list(found=TRUE, entity="egresados", raw_answer=raw, n=n, filters=filters,
        render_raw=hay_desglose,
-       source="Base Practicantes y Titulados TP 2024 (calculado en tiempo real)")
+       source="Base Practicantes y Titulados TP 2025 (calculado en tiempo real)")
 }
 
 query_data_direct <- function(query, matricula=NULL, docentes=NULL, egresados=NULL,
@@ -2251,8 +2266,8 @@ query_data_direct <- function(query, matricula=NULL, docentes=NULL, egresados=NU
   if (is_mat && !is.null(matricula) && nrow(matricula) > 0) return(.query_matricula(q, matricula))
   if (is_egr && !is.null(egresados) && nrow(egresados) > 0) {
     return(list(found=TRUE, entity="egresados",
-      raw_answer=paste0("Egresados EMTP 2024: ", format(nrow(egresados), big.mark="."), " registros."),
-      n=nrow(egresados), filters=character(0), source="Base egresados EMTP 2024 (tiempo real)"))
+      raw_answer=paste0("Egresados EMTP 2025: ", format(nrow(egresados), big.mark="."), " registros."),
+      n=nrow(egresados), filters=character(0), source="Base egresados EMTP 2025 (tiempo real)"))
   }
   NULL
 }
@@ -2370,7 +2385,7 @@ ask_ollama <- ask_llm
 .semantic_schema_text <- function() {
 'BASES Y COLUMNAS DISPONIBLES (usa EXACTAMENTE estos nombres de columna):
 
-base "matricula" (1 fila por estudiante-especialidad, matricula EMTP 2025):
+base "matricula" (1 fila por estudiante-especialidad, matricula EMTP 2026):
 - nom_reg_rbd_a: region del establecimiento (texto; ej: Maule, Biobio, Metropolitana, La Araucania)
 - nom_deprov_rbd: departamento provincial de educacion (DEPROV)
 - nom_com_rbd: comuna del establecimiento
@@ -2386,7 +2401,7 @@ base "matricula" (1 fila por estudiante-especialidad, matricula EMTP 2025):
 - cod_jor: jornada
 - gen_alu: genero del estudiante (1=Hombre, 2=Mujer)
 - edad_alu: edad del estudiante (numero)
-- categoria_asis_anual: categoria de asistencia anual del estudiante (1=Inasistencia critica <50%, 2=grave 50-84%, 3=reiterada 85-89%, 4=esperada >=90%)
+- categoria_asis_anual: categoria de asistencia anual 2025 del estudiante (1=Inasistencia critica <50%, 2=grave 50-84%, 3=reiterada 85-89%, 4=esperada >=90%); en preguntas de asistencia la base es la matricula 2025
 - tasa_asis_anual: porcentaje de asistencia anual del estudiante (numero 0-100; usar con metric=mean)
 - rft: pertenece a Red Futuro Tecnico (valor de texto: PERTENECE)
 - cod_etnia_alu: etnia (numero; mayor a 0 = declara pueblo originario)
@@ -2394,7 +2409,7 @@ base "matricula" (1 fila por estudiante-especialidad, matricula EMTP 2025):
 - tipo_ensenanza_emtp: Jovenes / Adultos / Ambos
 - rbd: id establecimiento ; mrun: id estudiante
 
-base "docentes" (1 fila por docente-contrato, EMTP 2025):
+base "docentes" (1 fila por docente-contrato, EMTP 2026):
 - NOM_REG_RBD_A, NOM_DEPROV_RBD, NOM_COM_RBD: geografia (mismos valores que matricula)
 - COD_DEPE2: dependencia (mismos codigos que matricula)
 - RURAL_RBD: ruralidad (0=Urbano, 1=Rural)
@@ -2406,7 +2421,7 @@ base "docentes" (1 fila por docente-contrato, EMTP 2025):
 - Poblacion: Jovenes / Adultos / Ambas
 - MRUN: id docente (persona) ; RBD: id establecimiento
 
-base "egresados" (egresados EMTP 2024):
+base "egresados" (egresados EMTP 2025):
 - NOM_REG_RBD_A, NOM_COM_RBD, NOM_DEPROV_RBD: geografia
 - DEPENDENCIA_label: dependencia (texto)
 - RURALIDAD_label: Rural / Urbano
@@ -2414,7 +2429,7 @@ base "egresados" (egresados EMTP 2024):
 - PROM_NOTAS_ALU: promedio de notas del egresado (numero)
 - RBD, MRUN
 
-base "continuidad" (continuidad a educacion superior 2024 a 2025):
+base "continuidad" (continuidad a educacion superior 2025 a 2026):
 - continua_es: continua en educacion superior (1=Si, 0=No)
 - tipo_inst_3: tipo de institucion (CFT, IP, Universidad)
 - nivel_carrera_2: nivel de la carrera
@@ -2708,6 +2723,9 @@ rag_answer <- function(query, index, kb, model="llama3.2", top_k=3,
   qn_rag  <- .norm(query)
   es_norm <- .is_normativa_query(qn_rag)
   direct  <- NULL
+  # Preguntas de asistencia (sin RBD): se responden sobre la base de asistencia anual (último año completo),
+  # que tiene las mismas columnas que la matrícula pero sus propios estudiantes.
+  if (.es_pregunta_asistencia(qn_rag) && is.null(.extract_rbd(qn_rag))) matricula <- .asis_df(matricula)
 
   # 0. Fuera de alcance (tendencias / opinión): responder con honestidad, sin
   #    enrutar a datos (evita conteos engañosos). No aplica a normativa.

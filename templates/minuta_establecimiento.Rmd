@@ -57,14 +57,14 @@ tabla_centrada <- function(df, caption = NULL, font_size = NULL) {
 ```
 
 ```{r titulo, results='asis', echo=FALSE}
-cat("# MINUTA DE DATOS GENERALES DEL ESTABLECIMIENTO - DATOS 2024/2025\n\n")
+cat("# MINUTA DE DATOS GENERALES DEL ESTABLECIMIENTO - DATOS 2026\n\n")
 ```
 
 > El documento presenta un resumen de los principales datos de matrícula y características del estudiantado con foco en la Educación Media Técnico-Profesional (EMTP). La información ha sido elaborada a partir de los registros administrativos del Ministerio de Educación disponibles a la fecha de su generación. Se incluyen datos generales del establecimiento, matrícula por especialidad, composición por género, pertenencia a pueblos originarios, nacionalidad y otras variables de interés.
 
-**Nota importante:** La matrícula de estudiantes corresponde a **2025**. Algunos datos complementarios corresponden a **2024**:
-- **Datos 2025:** Matrícula, especialidades, niveles de enseñanza, grados
-- **Datos 2024:** Pueblos originarios, internado, nacionalidad, categoría de asistencia, RFT (estos se actualizarán cuando estén disponibles oficialmente)
+**Nota importante:** cada sección usa el último dato publicado de su fuente:
+- **2026:** matrícula, especialidades, niveles de enseñanza, grados (corte 30-04-2026) y docentes (corte 30-06-2026).
+- **2025:** asistencia anual (último año completo; estudiantes matriculados en 2025), SIMCE e IDPS 2° medio, titulados (egresados 2024).
 
 # I. DATOS GENERALES
 
@@ -311,21 +311,21 @@ totales_estab <- df_estab %>%
   )
 
 # Mensaje explicativo
-cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2024 dividido por el total de egresados 2023. Se trunca al 100% si corresponde.\n\n")
+cat("La tasa de titulación al año de egreso se calcula como el total de titulados en 2025 dividido por el total de egresados 2024. Se trunca al 100% si corresponde.\n\n")
 
 # Mostramos la tabla con flextable
 totales_estab %>%
   select(total_egresados, total_titulados, tasa_titulacion_pct) %>%
   rename(
     `Total Egresados 2023` = total_egresados,
-    `Total Titulados 2024` = total_titulados,
+    `Total Titulados 2025` = total_titulados,
     `Tasa de Titulación (%)` = tasa_titulacion_pct
   ) %>%
   tabla_centrada()
 ```
 
 ```{r docentes_establecimiento, echo=FALSE, results='asis'}
-cat("# VI. DOCENTES EMTP 2025\n\n")
+cat("# VI. DOCENTES EMTP 2026\n\n")
 if (!is.null(params$resumen_subsector) && nrow(params$resumen_subsector) > 0) {
   cat("Distribución de docentes por especialidad:\n\n")
   
@@ -634,10 +634,10 @@ if (!is.null(params$datos_generales1) && nrow(params$datos_generales1) > 0) {
       arrange(Categoria)
 
     if (knitr::is_latex_output()) {
-      tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual")
+      tabla_centrada(datos_asistencia, caption = "Distribución de estudiantes según categoría de asistencia anual 2025")
     } else {
       flextable::flextable(datos_asistencia) %>%
-        flextable::set_caption("Distribución de estudiantes según categoría de asistencia anual") %>%
+        flextable::set_caption("Distribución de estudiantes según categoría de asistencia anual 2025") %>%
         flextable::colformat_num(j = "Porcentaje", digits = 1, suffix = "%") %>%
         flextable::align(align = "center", part = "all") %>%
         flextable::autofit()

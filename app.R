@@ -53,6 +53,9 @@ ANIO_TITULADOS <- if (!is.null(.cfg_env$ANIO_TITULADOS)) .cfg_env$ANIO_TITULADOS
 
 suppressWarnings({
 matricula_raw              <- readRDS("data/app/matricula.rds")
+# Asistencia anual: base aparte con los estudiantes EMTP del último año con asistencia anual publicada
+# (puede ser anterior a la matrícula vigente). Mismas columnas que matricula_raw + categoria/tasa.
+asistencia_raw             <- readRDS("data/app/asistencia.rds")
 base_apoyo                 <- readRDS("data/app/base_apoyo.rds")
 docentes_raw               <- readRDS("data/app/docentes.rds")
 docentes_idich             <- readRDS("data/app/docentes_idich.rds")
@@ -63,6 +66,7 @@ comunas                    <- readRDS("data/app/comunas.rds")
 idps_dimensiones           <- readRDS("data/app/idps_dimensiones.rds")
 titulados                  <- readRDS("data/app/titulados.rds")
 .meta                      <- readRDS("data/app/meta.rds")
+ANIO_ASIS                  <- if (!is.null(.meta$anio_asistencia)) .meta$anio_asistencia else unique(asistencia_raw$anio_asistencia)[1]
 })
 
 indicadores_continuidad    <- .meta$indicadores_continuidad
@@ -172,7 +176,7 @@ ui <- fluidPage(
         ),
         tags$h2("Cargando Explorador de Datos EMTP", 
                 style = "font-family: 'Roboto', sans-serif; font-weight: 300; margin-bottom: 10px;"),
-        tags$p("Preparando datos 2025...", 
+        tags$p("Preparando datos 2026...", 
                style = "font-size: 16px; opacity: 0.9;"),
         tags$style(HTML("
           @keyframes spin {
@@ -187,7 +191,7 @@ ui <- fluidPage(
   shinyjs::hidden(
     div(id = "main-content",
         navbarPage(
-          title = "Explorador de Datos EMTP 2025",
+          title = "Explorador de Datos EMTP 2026",
           id = "navbar",
           theme = shinytheme("flatly"),
           windowTitle = "Explorador EMTP",
@@ -357,17 +361,17 @@ ui <- fluidPage(
               div(class = "info-card",
                   fluidRow(
                     column(8,
-                           h1("Explorador de Datos EMTP 2025", class="hero-title", style="margin:0;"),
+                           h1("Explorador de Datos EMTP 2026", class="hero-title", style="margin:0;"),
                            p("Sistema integrado de visualización y análisis de datos de Educación Media Técnico Profesional",
                              class="hero-sub", style="margin:5px 0 0 0;"),
                            # NUEVO: badge de vigencia de datos siempre visible en el inicio
                            tags$div(style="margin-top:10px;",
                              tags$span(class="data-vintage-badge",
-                               tags$i(class="fas fa-database"), " Matrícula y docentes 2025"),
+                               tags$i(class="fas fa-database"), " Matrícula y docentes 2026"),
                              tags$span(class="data-vintage-badge",
-                               tags$i(class="fas fa-chart-bar"), " SIMCE · IDPS 2025 · IVE 2026"),
+                               tags$i(class="fas fa-chart-bar"), " SIMCE · IDPS · asistencia 2025 · IVE 2026"),
                              tags$span(class="data-vintage-badge",
-                               tags$i(class="fas fa-user-graduate"), " Egresados 2024 · Titulados 2025")
+                               tags$i(class="fas fa-user-graduate"), " Egresados 2025 · Titulados 2025")
                            )
                     ),
                     column(4,
@@ -419,7 +423,7 @@ ui <- fluidPage(
                 column(3, div(class="metric-card", style="border-left:6px solid #5A6E79;",
                   div(class="metric-number", style="color:var(--color-text)",
                       format(nrow(egresados_2024), big.mark=".")),
-                  div(class="metric-label", "Egresados EMTP 2024"))),
+                  div(class="metric-label", "Egresados EMTP 2025"))),
                 column(3, div(class="metric-card", style="border-left:6px solid #3C7F6D;",
                   div(class="metric-number", style="color:#3C7F6D",
                       paste0(gsub("\\.", ",", as.character(indicadores_continuidad$pct_continuidad)), "%")),
@@ -438,7 +442,7 @@ ui <- fluidPage(
               wellPanel(
                 h3(tags$i(class="fas fa-info-circle"), " Acerca del Sistema"),
                 p("Esta aplicación permite visualizar y descargar información completa de la matrícula y otros datos de apoyo 
-          de la Educación Media Técnico Profesional (EMTP) correspondientes al año 2025."),
+          de la Educación Media Técnico Profesional (EMTP) correspondientes al año 2026 (con el último dato publicado de cada fuente)."),
                 
                 tags$div(class = "alert-info",
                          tags$strong("Importante: "), 
@@ -471,9 +475,8 @@ ui <- fluidPage(
                     tags$p("Cada indicador usa la versión más reciente publicada por su fuente oficial. La continuidad y la titulación se miden sobre la cohorte de egreso del año anterior, por lo que provienen de bases distintas:",
                            style="margin-bottom: 8px; color: #333333; font-weight: 500; line-height: 1.5;"),
                     tags$ul(style="margin: 0 0 0 4px; color:#333; font-weight:500; line-height:1.6;",
-                      tags$li(tags$strong("2025: "), "Matrícula EMTP, docentes, matrícula en educación superior, SIMCE 2° medio, IDPS 2° medio y titulados Técnico-Profesional (titulaciones registradas durante el año)."),
-                      tags$li(tags$strong("2026: "), "Índice de Vulnerabilidad Escolar (IVE-JUNAEB)."),
-                      tags$li(tags$strong("2024: "), "Egresados de enseñanza media (cohorte base de continuidad de estudios)."))
+                      tags$li(tags$strong("2026: "), "Matrícula EMTP (corte 30-04-2026), Directorio de establecimientos, docentes (corte 30-06-2026), matrícula en educación superior e Índice de Vulnerabilidad Escolar (IVE-JUNAEB)."),
+                      tags$li(tags$strong("2025: "), "Asistencia anual (último año completo: estudiantes matriculados en 2025; la de 2026 se publica a inicios de 2027), SIMCE 2° medio, IDPS 2° medio, titulados Técnico-Profesional (titulaciones registradas durante el año) y egresados de enseñanza media (cohorte base de continuidad de estudios)."))
                   )
                 )
               ),
@@ -554,7 +557,7 @@ ui <- fluidPage(
                            h4(class="nav-card-title",
                               actionLink("go_egresados", class="nav-title-link",
                                 label = tagList(tags$i(class="fas fa-user-graduate"), " Egresados y Titulados"))),
-                           p("Analiza egresados EMTP 2024, continuidad de estudios en educación superior 2025 y titulación Técnico-Profesional (tasa al año de egreso, especialidad y sector económico).")
+                           p("Analiza egresados EMTP 2025, continuidad de estudios en educación superior 2026 y titulación Técnico-Profesional (tasa al año de egreso, especialidad y sector económico).")
                          )
                   ),
                   column(6,
@@ -635,21 +638,21 @@ ui <- fluidPage(
                   column(4,
                          tags$div(style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin: 5px;",
                                   tags$i(class="fas fa-users fa-2x", style="color: var(--color-primary);"),
-                                  h5("Matrícula EMTP 2025"),
+                                  h5("Matrícula EMTP 2026"),
                                   downloadButton("descargar_matricula_csv", "Descargar (.csv)", class = "btn-primary btn-sm")
                          )
                   ),
                   column(4,
                          tags$div(style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin: 5px;",
                                   tags$i(class="fas fa-school fa-2x", style="color: var(--color-accent-red);"),
-                                  h5("Base de Establecimientos 2025"),
+                                  h5("Base de Establecimientos 2026"),
                                   downloadButton("descargar_base_apoyo_csv", "Descargar (.csv)", class = "btn-primary btn-sm")
                          )
                   ),
                   column(4,
                          tags$div(style="text-align: center; padding: 15px; border: 1px solid #ddd; border-radius: 8px; margin: 5px;",
                                   tags$i(class="fas fa-chalkboard-teacher fa-2x", style="color: var(--color-primary-dark);"),
-                                  h5("Docentes EMTP 2025"),
+                                  h5("Docentes EMTP 2026"),
                                   downloadButton("descargar_docentes_emtp_csv", "Descargar (.csv)", class = "btn-primary btn-sm")
                          )
                   )
@@ -665,19 +668,19 @@ ui <- fluidPage(
                 tags$summary(tags$span(tags$i(class="fas fa-exclamation-triangle", style="color:#e67e22;"), " Notas Metodológicas y Correcciones de Datos")),
                 tags$div(class = "emtp-acc-body",
                 tags$p(style="font-size:13px; color:#555; margin-bottom:10px;",
-                  "Las siguientes notas documentan limitaciones conocidas de las bases oficiales Mineduc 2025 y correcciones aplicadas en esta plataforma."
+                  "Las siguientes notas documentan limitaciones conocidas de las bases oficiales Mineduc 2025-2026 y correcciones aplicadas en esta plataforma."
                 ),
                 tags$div(class="alert alert-warning", style="margin-bottom:10px;",
                   tags$strong(tags$i(class="fas fa-book"), " Diferencias de taxonomía entre bases Mineduc (Matrícula vs. Docentes)"),
                   tags$br(), tags$br(),
-                  HTML("La Matrícula Única 2025 y el Directorio de Docentes 2025 utilizan <strong>dos catálogos distintos para la variable Especialidad/Subsector</strong>. Esto impide cruzar directamente ambas fuentes en algunos casos. Casos detectados:
+                  HTML("La Matrícula Única y el Directorio de Docentes (2025 y 2026) utilizan <strong>dos catálogos distintos para la variable Especialidad/Subsector</strong>. Esto impide cruzar directamente ambas fuentes en algunos casos. Casos detectados:
                   <ul style='margin:6px 0 4px 20px; font-size:13px;'>
                     <li><strong>Gastronomía</strong> (61003 en matrícula, ~14.857 estudiantes): figura como <em>Servicio de Alimentación Colectiva</em> (61002) en el directorio docente.</li>
                     <li><strong>Programación</strong> (58034) y <strong>Conectividad y Redes</strong> (58033): ambos figuran bajo 58035 <em>Telecomunicaciones (Redes)</em> en docentes.</li>
                   </ul>")
                 ),
                 tags$div(class="alert alert-secondary", style="font-size:12px; padding:8px 12px;",
-                  HTML("<strong><i class='fas fa-database'></i> Corrección puntual aplicada — RBD 25824:</strong> El Liceo Sergio Silva Bascuñán (La Pintana) figura en las bases oficiales Mineduc 2025 con dependencia SLEP (COD_DEPE2=5) por error de codificación en la fuente. Se ha corregido a Particular Subvencionado (COD_DEPE2=2), en concordancia con la matrícula 2024 y su reconocimiento oficial. Esta corrección aplica a todas las pestañas de la plataforma.")
+                  HTML("<strong><i class='fas fa-database'></i> Corrección puntual aplicada — RBD 25824:</strong> El Liceo Sergio Silva Bascuñán (La Pintana) figura en las bases oficiales Mineduc 2025 y 2026 con dependencia SLEP (COD_DEPE2=5) por error de codificación en la fuente. Se ha corregido a Particular Subvencionado (COD_DEPE2=2), en concordancia con la matrícula 2024 y su reconocimiento oficial. Esta corrección aplica a todas las pestañas de la plataforma.")
                 )
               )),
 
@@ -690,6 +693,11 @@ ui <- fluidPage(
                 tags$summary(tags$span(tags$i(class="fas fa-history"), " Historial de Actualizaciones")),
                 tags$div(class = "emtp-acc-body",
                 tags$ul(
+                  tags$li(tags$strong("23 de noviembre de 2026:"), " Actualización a ", tags$strong("2026"),
+                    ": Matrícula 2026 (174.630 estudiantes con especialidad en 966 establecimientos), Directorio de establecimientos 2026, ",
+                    "Docentes 2026 (18.817 docentes TP; 6.032 en Módulos de Especialidad), Egresados 2025 (78.088) y continuidad en ",
+                    "educación superior 2026 (50,6%). La asistencia anual pasa a una base propia con los estudiantes 2025 (último año completo). ",
+                    "73 liceos municipales pasaron a 10 SLEP nuevos. El promedio de notas de egresados se normalizó a escala 1-7."),
                   tags$li(tags$strong("5 de julio de 2026:"), " Se actualizó la base de Practicantes y Titulados Técnico-Profesional a la cohorte ",
                     tags$strong("2025"), " (56.757 titulaciones registradas durante el año calendario 2025)."),
                   tags$li(tags$strong("18 de junio de 2026:"), " Reconstrucción completa del pipeline de datos desde las bases brutas oficiales. Se incorporaron ",
@@ -1364,7 +1372,7 @@ ui <- fluidPage(
               br(),
               div(class="alert alert-warning", style="margin-bottom:15px;",
                   HTML("<strong><i class='fas fa-exclamation-triangle'></i> Nota metodológica: diferencias de taxonomía entre bases Mineduc</strong><br><br>
-                    Una auditoría cruzada entre el Directorio de Docentes 2025 y la Matrícula Única 2025 reveló que ambas fuentes utilizan <strong>dos catálogos distintos para la variable Especialidad/Subsector</strong>: la matrícula refleja el currículum actualizado (Decreto 452/2013 con ajustes posteriores), mientras que el directorio de docentes opera con un catálogo previo en el que ciertas especialidades aparecen colapsadas o renombradas. Esto debe tenerse presente al cruzar ambos productos.<br><br>
+                    Una auditoría cruzada entre el Directorio de Docentes 2025 y la Matrícula Única 2025 (vigente también en 2026) reveló que ambas fuentes utilizan <strong>dos catálogos distintos para la variable Especialidad/Subsector</strong>: la matrícula refleja el currículum actualizado (Decreto 452/2013 con ajustes posteriores), mientras que el directorio de docentes opera con un catálogo previo en el que ciertas especialidades aparecen colapsadas o renombradas. Esto debe tenerse presente al cruzar ambos productos.<br><br>
                     <strong>Casos detectados:</strong>
                     <ul style='margin:6px 0 4px 20px;'>
                       <li><strong>Gastronomía</strong> (61003 en matrícula, ~14.857 estudiantes): no existe como código en el directorio de docentes, donde el área figura bajo 61002 <em>Servicio de Alimentación Colectiva</em>. Es un renombramiento curricular no propagado al maestro de docentes.</li>
@@ -1372,7 +1380,7 @@ ui <- fluidPage(
                     </ul>
                   ")),
               div(class="alert alert-secondary", style="margin-bottom:15px; font-size:12px; padding:8px 12px;",
-                  HTML("<strong><i class='fas fa-info-circle'></i> Corrección de dato puntual — RBD 25824:</strong> El Liceo Sergio Silva Bascuñán (La Pintana) figura en las bases oficiales Mineduc 2025 con dependencia SLEP (COD_DEPE2=5) por error de codificación en la fuente. Se ha corregido a Particular Subvencionado (COD_DEPE2=2), en concordancia con la matrícula 2024 y su reconocimiento oficial.")
+                  HTML("<strong><i class='fas fa-info-circle'></i> Corrección de dato puntual — RBD 25824:</strong> El Liceo Sergio Silva Bascuñán (La Pintana) figura en las bases oficiales Mineduc 2025 y 2026 con dependencia SLEP (COD_DEPE2=5) por error de codificación en la fuente. Se ha corregido a Particular Subvencionado (COD_DEPE2=2), en concordancia con la matrícula 2024 y su reconocimiento oficial.")
               ),
               div(class="panel-custom", style="margin-bottom:15px;",
                   h4(icon("filter"), "Filtros"),
@@ -1526,13 +1534,13 @@ ui <- fluidPage(
                 tabPanel(
                   title = tagList(icon("user-graduate"), "Egresados EMTP"),
                   
-                  h4(icon("user-graduate"), " Egresados EMTP 2024"),
-                  p("Estudiantes que completaron Educación Media Técnico-Profesional en 2024."),
+                  h4(icon("user-graduate"), " Egresados EMTP 2025"),
+                  p("Estudiantes que completaron Educación Media Técnico-Profesional en 2025."),
                   
                   div(class = "alert alert-info", style = "margin: 10px 0;",
                       icon("info-circle"), 
                       strong(" Nota: "), 
-                      "Datos del año 2024. Cuando estén disponibles los datos de 2025, se agregará un selector de año."
+                      "Datos del año de egreso 2025 (Notas y Egresados de Enseñanza Media 2025, Mineduc)."
                   ),
                   
                   # KPIs principales
@@ -1642,12 +1650,13 @@ ui <- fluidPage(
                   title = tagList(icon("university"), "Continuidad de Estudios"),
                   
                   h4(icon("university"), " Continuidad en Educación Superior (al año de egreso)"),
-                  p("Análisis de egresados EMTP 2024 que se matricularon en educación superior en 2025."),
+                  p("Análisis de egresados EMTP 2025 que se matricularon en educación superior en 2026."),
                   
                   div(class = "alert alert-info", style = "margin: 10px 0;",
                       icon("info-circle"), 
                       strong(" Metodología: "), 
-                      "Se cruza MRUN de egresados EMTP 2024 con matrícula en educación superior 2025 (año t+1). ",
+                      "Se cruza MRUN de egresados EMTP 2025 con matrícula en educación superior 2026 (año t+1). ",
+                      "En 2026 el CFT INACAP pasa al IP INACAP: la distribución entre CFT e IP no es comparable con años anteriores. ",
                       "Permite identificar qué porcentaje continúa estudios al año siguiente de egresar y en qué tipo de institución."
                   ),
                   
@@ -1703,10 +1712,10 @@ ui <- fluidPage(
                   # KPIs de continuidad
                   fluidRow(
                     column(3, div(class="metric-card", 
-                                  h5("Egresados EMTP 2024"), 
+                                  h5("Egresados EMTP 2025"), 
                                   h2(textOutput("cont_total_egresados")))),
                     column(3, div(class="metric-card", 
-                                  h5("Continúan en ES 2025"), 
+                                  h5("Continúan en ES 2026"), 
                                   h2(textOutput("cont_total_continuan")))),
                     column(3, div(class="metric-card", 
                                   h5("% Continuidad"), 
@@ -1720,7 +1729,7 @@ ui <- fluidPage(
                   
                   # Información sobre formas de ingreso
                   div(class = "well", style = "background-color: #f8f9fa;",
-                      h5(icon("info-circle"), " Datos de Matrícula Educación Superior 2025"),
+                      h5(icon("info-circle"), " Datos de Matrícula Educación Superior 2026"),
                       p("Variables analizadas: tipo de institución (Universidad, IP, CFT), modalidad (presencial/no presencial), ",
                         "área de conocimiento, acreditación de carrera e institución, y forma de ingreso."),
                       p(strong("Formas de ingreso:"), " Ingreso directo, PACE, articulación TNS, RAP, programas de inclusión, entre otros.")
@@ -3369,6 +3378,7 @@ server <- function(input, output, session) {
     
     comunas_f <- comunas
     matricula_f <- matricula_raw
+    asistencia_f <- asistencia_raw
     
     # Aplicar filtros de manera más eficiente
     filtros <- list(
@@ -3384,35 +3394,42 @@ server <- function(input, output, session) {
     if(!is.null(filtros$region)) {
       comunas_f <- comunas_f %>% filter(nom_reg_rbd_a == filtros$region)
       matricula_f <- matricula_f %>% filter(nom_reg_rbd_a == filtros$region)
+      asistencia_f <- asistencia_f %>% filter(nom_reg_rbd_a == filtros$region)
     }
     
     if(!is.null(filtros$provincia)) {
       comunas_f <- comunas_f %>% filter(nom_deprov_rbd == filtros$provincia)
       matricula_f <- matricula_f %>% filter(nom_deprov_rbd == filtros$provincia)
+      asistencia_f <- asistencia_f %>% filter(nom_deprov_rbd == filtros$provincia)
     }
     
     if(!is.null(filtros$comuna)) {
       comunas_f <- comunas_f %>% filter(nom_com_rbd == filtros$comuna)
       matricula_f <- matricula_f %>% filter(nom_com_rbd == filtros$comuna)
+      asistencia_f <- asistencia_f %>% filter(nom_com_rbd == filtros$comuna)
     }
     
     if(!is.null(filtros$rft)) {
       comunas_f <- comunas_f %>% filter(rft == filtros$rft)
       matricula_f <- matricula_f %>% filter(rft == filtros$rft)
+      asistencia_f <- asistencia_f %>% filter(rft == filtros$rft)
     }
     
     if(!is.null(filtros$dependencia)) {
       matricula_f <- matricula_f %>% filter(cod_depe2 == filtros$dependencia)
+      asistencia_f <- asistencia_f %>% filter(cod_depe2 == filtros$dependencia)
     }
     
     if(!is.null(filtros$sostenedor)) {
       matricula_f <- matricula_f %>% filter(nombre_sost == filtros$sostenedor)
+      asistencia_f <- asistencia_f %>% filter(nombre_sost == filtros$sostenedor)
       comunas_f <- comunas_f %>% filter(cod_comuna %in% unique(matricula_f$cod_comuna))
     }
     
     # Filtro por Sector Económico (agrupación oficial de especialidades, COD_SEC)
     if(!is.null(input$sector_mapa) && input$sector_mapa != "Todos") {
       matricula_f <- matricula_f %>% filter(nom_sector == input$sector_mapa)
+      asistencia_f <- asistencia_f %>% filter(nom_sector == input$sector_mapa)
       comunas_f <- comunas_f %>% filter(cod_comuna %in% unique(matricula_f$cod_comuna))
     }
 
@@ -3420,6 +3437,7 @@ server <- function(input, output, session) {
     if(!is.null(input$especialidad) && length(input$especialidad) > 0 && !"Todas" %in% input$especialidad) {
       comunas_f <- comunas_f %>% filter(nom_espe %in% input$especialidad)
       matricula_f <- matricula_f %>% filter(nom_espe %in% input$especialidad)
+      asistencia_f <- asistencia_f %>% filter(nom_espe %in% input$especialidad)
     }
     
     # Actualizar colores del mapa
@@ -3431,7 +3449,7 @@ server <- function(input, output, session) {
     
     mostrar_estado(paste("Filtros aplicados:", format(nrow(matricula_f), big.mark = ","), "registros"))
     
-    list(comunas = comunas_actual, matricula = matricula_f)
+    list(comunas = comunas_actual, matricula = matricula_f, asistencia = asistencia_f)
   }), 500) # Debounce de 500ms
 
   # ===== Indicadores del territorio (Mapa) — reactivos a los filtros =====
@@ -3526,14 +3544,14 @@ server <- function(input, output, session) {
   })
 
   output$mapa_asis_prom <- renderText({
-    d <- tryCatch(datos_filtrados()$matricula, error = function(e) NULL)
+    d <- tryCatch(datos_filtrados()$asistencia, error = function(e) NULL)
     if (is.null(d)) return("")
     m <- mean(suppressWarnings(as.numeric(d$tasa_asis_anual)), na.rm = TRUE)
     if (is.nan(m) || is.na(m)) "" else paste0("Promedio: ", gsub("\\.", ",", sprintf("%.1f", m)), "%")
   })
 
   output$mapa_asis_plot <- renderPlotly({
-    d <- tryCatch(datos_filtrados()$matricula, error = function(e) NULL)
+    d <- tryCatch(datos_filtrados()$asistencia, error = function(e) NULL)
     if (is.null(d)) return(plotly_empty())
     lab <- c("1"="Crítica (<50%)","2"="Grave (50-84%)","3"="Reiterada (85-89%)","4"="Esperada (>=90%)")
     col <- c("Crítica (<50%)"="#963A3A","Grave (50-84%)"="#C0392B",
@@ -4006,7 +4024,7 @@ server <- function(input, output, session) {
   # Descargar matrícula en CSV (sin columnas de equipamiento)
   output$descargar_matricula_csv <- downloadHandler(
     filename = function() {
-      paste0("Matricula_EMTP_2025_", Sys.Date(), ".csv")
+      paste0("Matricula_EMTP_2026_", Sys.Date(), ".csv")
     },
     content = function(file) {
       # Excluir columnas de equipamiento y columnas internas
@@ -4295,6 +4313,7 @@ server <- function(input, output, session) {
         params = list(
           nombre_territorio = nombre,
           territorio_filtrado = territorio_filtrado,
+          asistencia_filtrada = datos_filtrados()$asistencia,
           resumen_matricula = resumen_matricula(),
           detalle_especialidades = NULL,
           resumen_etnias = NULL,
@@ -4449,8 +4468,8 @@ server <- function(input, output, session) {
         ) %>%
         select("Nacionalidad", "Total", "Hombres", "Mujeres", "% del Total")
       
-      # ===== ASISTENCIA ANUAL (DATOS 2024) =====
-      detalle_asistencia_terr <- territorio_filtrado %>%
+      # ===== ASISTENCIA ANUAL (base aparte: último año con asistencia anual) =====
+      detalle_asistencia_terr <- datos_filtrados()$asistencia %>%
         filter(!is.na(categoria_asis_anual)) %>%
         group_by(categoria_asis_anual) %>%
         summarise(
@@ -4478,14 +4497,14 @@ server <- function(input, output, session) {
       openxlsx::addWorksheet(wb, "Resumen General")
       openxlsx::writeData(wb, "Resumen General", resumen_territorio_excel, rowNames = FALSE)
       
-      openxlsx::addWorksheet(wb, "Nivel y Grado 2025")
-      openxlsx::writeData(wb, "Nivel y Grado 2025", detalle_nivel_grado, rowNames = FALSE)
+      openxlsx::addWorksheet(wb, "Nivel y Grado 2026")
+      openxlsx::writeData(wb, "Nivel y Grado 2026", detalle_nivel_grado, rowNames = FALSE)
       
-      openxlsx::addWorksheet(wb, "Especialidades 2025")
-      openxlsx::writeData(wb, "Especialidades 2025", detalle_especialidades_terr, rowNames = FALSE)
+      openxlsx::addWorksheet(wb, "Especialidades 2026")
+      openxlsx::writeData(wb, "Especialidades 2026", detalle_especialidades_terr, rowNames = FALSE)
       
-      openxlsx::addWorksheet(wb, "Establecimientos 2025")
-      openxlsx::writeData(wb, "Establecimientos 2025", detalle_establecimientos_terr, rowNames = FALSE)
+      openxlsx::addWorksheet(wb, "Establecimientos 2026")
+      openxlsx::writeData(wb, "Establecimientos 2026", detalle_establecimientos_terr, rowNames = FALSE)
       
       if (nrow(detalle_etnias_terr) > 0) {
         openxlsx::addWorksheet(wb, "Etnias (2024)", tabColour = "#E67E22")
@@ -4498,8 +4517,8 @@ server <- function(input, output, session) {
       }
       
       if (nrow(detalle_asistencia_terr) > 0) {
-        openxlsx::addWorksheet(wb, "Asistencia Anual (2024)", tabColour = "#E67E22")
-        openxlsx::writeData(wb, "Asistencia Anual (2024)", detalle_asistencia_terr, rowNames = FALSE)
+        openxlsx::addWorksheet(wb, paste("Asistencia Anual", ANIO_ASIS), tabColour = "#E67E22")
+        openxlsx::writeData(wb, paste("Asistencia Anual", ANIO_ASIS), detalle_asistencia_terr, rowNames = FALSE)
       }
       
       # ===== ESTILOS EXCEL =====
@@ -4529,12 +4548,12 @@ server <- function(input, output, session) {
         openxlsx::freezePane(wb, hoja, firstRow = TRUE)
       }
       aplicar_est_terr("Resumen General",     resumen_territorio_excel)
-      aplicar_est_terr("Nivel y Grado 2025",  detalle_nivel_grado)
-      aplicar_est_terr("Especialidades 2025", detalle_especialidades_terr)
-      aplicar_est_terr("Establecimientos 2025", detalle_establecimientos_terr)
+      aplicar_est_terr("Nivel y Grado 2026",  detalle_nivel_grado)
+      aplicar_est_terr("Especialidades 2026", detalle_especialidades_terr)
+      aplicar_est_terr("Establecimientos 2026", detalle_establecimientos_terr)
       if (nrow(detalle_etnias_terr)        > 0) aplicar_est_terr("Etnias (2024)",          detalle_etnias_terr)
       if (nrow(detalle_nacionalidad_terr)  > 0) aplicar_est_terr("Nacionalidad (2024)",    detalle_nacionalidad_terr)
-      if (nrow(detalle_asistencia_terr)    > 0) aplicar_est_terr("Asistencia Anual (2024)", detalle_asistencia_terr)
+      if (nrow(detalle_asistencia_terr)    > 0) aplicar_est_terr(paste("Asistencia Anual", ANIO_ASIS), detalle_asistencia_terr)
       
       # Guardar workbook
       openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
@@ -4579,7 +4598,8 @@ server <- function(input, output, session) {
           dplyr::select(rbd, nom_rbd, cod_depe2, rft, nom_reg_rbd_a, nom_deprov_rbd, nombre_sost, nom_com_rbd, RuralidadRBD) %>%
           dplyr::distinct()
         
-        datos_generales1 <- matricula_raw %>%
+        # Asistencia anual por estudiante: base aparte (último año con asistencia anual)
+        datos_generales1 <- asistencia_raw %>%
           dplyr::filter(rbd == rbd_seleccionado) %>%
           dplyr::select(rbd, nom_rbd, cod_depe2, rft, nom_reg_rbd_a, nom_deprov_rbd, nombre_sost, nom_com_rbd, RuralidadRBD, categoria_asis_anual)
         
@@ -4757,10 +4777,10 @@ server <- function(input, output, session) {
             detalle_por_nivel = detalle_por_nivel,
             datos_docentes = datos_docentes,
             resumen_subsector = if (nrow(docentes_tp) > 0) docentes_tp else tibble::tibble(Especialidad = character()),
-            asistencia = matricula_raw %>%
+            asistencia = asistencia_raw %>%
               dplyr::filter(rbd == rbd_seleccionado, !is.na(categoria_asis_anual)) %>%
               dplyr::count(categoria_asis_anual),
-            asis_prom = mean(matricula_raw$tasa_asis_anual[matricula_raw$rbd == rbd_seleccionado], na.rm = TRUE)
+            asis_prom = mean(asistencia_raw$tasa_asis_anual[asistencia_raw$rbd == rbd_seleccionado], na.rm = TRUE)
           ),
           envir = new.env(parent = globalenv()),
           quiet = TRUE
@@ -4918,8 +4938,8 @@ server <- function(input, output, session) {
           ) %>%
           select("Nacionalidad", "Total", "Hombres", "Mujeres", "% del Total")
         
-        # ===== HOJA 7: ASISTENCIA ANUAL (DATOS 2024) =====
-        detalle_asistencia <- matricula_actual %>%
+        # ===== HOJA 7: ASISTENCIA ANUAL (base aparte: último año con asistencia anual) =====
+        detalle_asistencia <- asistencia_raw %>%
           filter(rbd == rbd_seleccionado, !is.na(categoria_asis_anual)) %>%
           group_by(categoria_asis_anual) %>%
           summarise(
@@ -5013,12 +5033,12 @@ server <- function(input, output, session) {
         openxlsx::writeData(wb, "Resumen General", resumen_matricula_excel, rowNames = FALSE)
         
         # Hoja 3: Especialidades
-        openxlsx::addWorksheet(wb, "Especialidades 2025", tabColour = "#3C7F6D")
-        openxlsx::writeData(wb, "Especialidades 2025", detalle_especialidades_excel, rowNames = FALSE)
+        openxlsx::addWorksheet(wb, "Especialidades 2026", tabColour = "#3C7F6D")
+        openxlsx::writeData(wb, "Especialidades 2026", detalle_especialidades_excel, rowNames = FALSE)
         
         # Hoja 4: Nivel y Grado
-        openxlsx::addWorksheet(wb, "Nivel y Grado 2025", tabColour = "#3C7F6D")
-        openxlsx::writeData(wb, "Nivel y Grado 2025", detalle_por_nivel, rowNames = FALSE)
+        openxlsx::addWorksheet(wb, "Nivel y Grado 2026", tabColour = "#3C7F6D")
+        openxlsx::writeData(wb, "Nivel y Grado 2026", detalle_por_nivel, rowNames = FALSE)
         
         # Hoja 5: Etnias
         if (nrow(detalle_etnias) > 0) {
@@ -5040,8 +5060,8 @@ server <- function(input, output, session) {
         
         # Hoja 8: Asistencia Anual
         if (nrow(detalle_asistencia) > 0) {
-          openxlsx::addWorksheet(wb, "Asistencia Anual (2024)", tabColour = "#E67E22")
-          openxlsx::writeData(wb, "Asistencia Anual (2024)", detalle_asistencia, rowNames = FALSE)
+          openxlsx::addWorksheet(wb, paste("Asistencia Anual", ANIO_ASIS), tabColour = "#E67E22")
+          openxlsx::writeData(wb, paste("Asistencia Anual", ANIO_ASIS), detalle_asistencia, rowNames = FALSE)
         }
         
         # ===== ESTILOS EXCEL =====
@@ -5072,12 +5092,12 @@ server <- function(input, output, session) {
         }
         aplicar_est_rbd("Establecimiento", detalle_establecimiento_2025)
         aplicar_est_rbd("Resumen General",     resumen_matricula_excel)
-        aplicar_est_rbd("Especialidades 2025", detalle_especialidades_excel)
-        aplicar_est_rbd("Nivel y Grado 2025",  detalle_por_nivel)
+        aplicar_est_rbd("Especialidades 2026", detalle_especialidades_excel)
+        aplicar_est_rbd("Nivel y Grado 2026",  detalle_por_nivel)
         if (nrow(detalle_etnias)       > 0) aplicar_est_rbd("Etnias (2024)",                  detalle_etnias)
         if (nrow(detalle_extranjeros)  > 0) aplicar_est_rbd("Nacionalidad (2024)",            detalle_extranjeros)
         if (nrow(detalle_origen_extranjeros) > 0) aplicar_est_rbd("Estudiantes Extranjeros (2024)", detalle_origen_extranjeros)
-        if (nrow(detalle_asistencia)   > 0) aplicar_est_rbd("Asistencia Anual (2024)",        detalle_asistencia)
+        if (nrow(detalle_asistencia)   > 0) aplicar_est_rbd(paste("Asistencia Anual", ANIO_ASIS),        detalle_asistencia)
         
         # Guardar workbook
         openxlsx::saveWorkbook(wb, ruta_archivo, overwrite = TRUE)
@@ -6427,7 +6447,7 @@ server <- function(input, output, session) {
   # ---- Asistencia anual del establecimiento (categoría) ----
   output$ee_asis_prom <- renderText({
     req(input$ee_rbd)
-    d <- matricula_raw %>% dplyr::filter(as.character(rbd) == input$ee_rbd)
+    d <- asistencia_raw %>% dplyr::filter(as.character(rbd) == input$ee_rbd)
     m <- mean(suppressWarnings(as.numeric(d$tasa_asis_anual)), na.rm = TRUE)
     if (is.nan(m) || is.na(m)) "" else paste0("Promedio: ", gsub("\\.", ",", sprintf("%.1f", m)), "%")
   })
@@ -6437,7 +6457,7 @@ server <- function(input, output, session) {
     lab <- c("1"="Crítica (<50%)","2"="Grave (50-84%)","3"="Reiterada (85-89%)","4"="Esperada (>=90%)")
     col <- c("Crítica (<50%)"="#963A3A","Grave (50-84%)"="#C0392B",
              "Reiterada (85-89%)"="#D4A017","Esperada (>=90%)"="#1E8449")
-    d <- matricula_raw %>%
+    d <- asistencia_raw %>%
       dplyr::filter(as.character(rbd) == input$ee_rbd, !is.na(categoria_asis_anual)) %>%
       dplyr::mutate(Cat = lab[as.character(categoria_asis_anual)]) %>%
       dplyr::filter(!is.na(Cat)) %>% dplyr::count(Cat)
